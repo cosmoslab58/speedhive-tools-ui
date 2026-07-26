@@ -15,6 +15,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+        with:
+          # requirements.txt installs ./speedhive-tools, which is a git
+          # submodule -- without this the directory checks out empty and
+          # the pip install inside the Dockerfile fails.
+          submodules: recursive
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
