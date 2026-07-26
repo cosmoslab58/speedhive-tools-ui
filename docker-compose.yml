@@ -1,6 +1,10 @@
 services:
   web:
     container_name: speedhive-tools-ui
+    # Tagged with the published name so the locally-built image and the
+    # one pushed to GHCR are the same reference. build: . stays, so the
+    # self-hosted deploy still builds in place rather than pulling.
+    image: ghcr.io/cosmoslab58/speedhive-tools-ui:latest
     build: .
     restart: unless-stopped
     environment:
