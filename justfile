@@ -2,7 +2,12 @@
 install:
     python -m venv venv
     ./venv/bin/pip install --upgrade pip
-    ./venv/bin/pip install ruff pytest
+    # ruff is pinned: the recipe previously installed it unpinned, so CI
+    # picked up whatever was current that day. 0.16.0 added rules that
+    # produced 312 errors in untouched code and broke every PR, while
+    # main had last gone green on 0.15.22. Bump deliberately, not by
+    # accident of timing.
+    ./venv/bin/pip install 'ruff==0.15.22' pytest
     ./venv/bin/pip install -r requirements.txt
     ./venv/bin/pip install -e ./speedhive-tools
 
