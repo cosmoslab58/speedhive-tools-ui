@@ -1,34 +1,40 @@
-import os
 import json
+import os
 import threading
-from pathlib import Path
 from datetime import datetime
-from flask import request, redirect, url_for, render_template, jsonify, Response
-from app import client, storage
-from app.db import get_org_view
-from app.tasks import (
-    _get_running_track_records_task_for_org,
-    _new_track_records_task,
-    _run_track_records_sync_task,
-    _run_track_records_scan_only_task,
-    _get_track_records_task,
-    _trigger_track_records_rescan,
-    TRACK_RECORDS_ROOT,
+from pathlib import Path
+
+from flask import Response, jsonify, redirect, render_template, request, url_for
+from speedhive.exporters.export_curated_track_records import (
+    export_curated_track_records_ndjson,
 )
-from app.utils import (
-    iso_utc,
-    utc_now,
-    read_json_file,
-)
-from app.notifications import _send_resend_notification
 from speedhive.settings import (
     get_org_env_var,
     get_org_env_var_override,
     get_org_env_var_with_source,
 )
 from speedhive.workflows.track_records import curation as track_records
-from speedhive.exporters.export_curated_track_records import export_curated_track_records_ndjson
-from speedhive.workflows.track_records.import_curated import import_curated_track_records_ndjson
+from speedhive.workflows.track_records.import_curated import (
+    import_curated_track_records_ndjson,
+)
+
+from app import client, storage
+from app.db import get_org_view
+from app.notifications import _send_resend_notification
+from app.tasks import (
+    TRACK_RECORDS_ROOT,
+    _get_running_track_records_task_for_org,
+    _get_track_records_task,
+    _new_track_records_task,
+    _run_track_records_scan_only_task,
+    _run_track_records_sync_task,
+    _trigger_track_records_rescan,
+)
+from app.utils import (
+    iso_utc,
+    read_json_file,
+    utc_now,
+)
 
 
 def _track_records_candidate_identity(candidate):
@@ -417,7 +423,7 @@ def _mask_secret(value):
     return f"••••••••••••{value[-4:]}"
 
 
-def _get_setting_info(name: str, org_id: int, is_secret: bool = False, default_fallback: str = None):
+def _get_setting_info(name: str, org_id: int, is_secret: bool = False, default_fallback: str | None = None):
     override = get_org_env_var_override(name, org_id)
     global_val = os.environ.get(name)
     effective_val, source = get_org_env_var_with_source(name, org_id)
@@ -506,7 +512,7 @@ def org_track_records_settings(org_id):
                 parsing_config=parsing_data,
                 stats_config=stats_data,
                 env_settings=env_settings,
-                error=f"Invalid Alias Map JSON: {str(exc)}"
+                error=f"Invalid Alias Map JSON: {exc!s}"
             )
 
         # Safely preserve other keys in settings.json while updating toggles/overrides
@@ -690,7 +696,7 @@ def org_track_records_notify(org_id):
     try:
         candidates_data = track_records.load_candidates(p)
     except Exception as exc:
-        return jsonify({"error": f"Failed to read candidates file: {str(exc)}"}), 500
+        return jsonify({"error": f"Failed to read candidates file: {exc!s}"}), 500
 
     candidates = candidates_data.get("candidates", [])
     if not candidates:
@@ -709,7 +715,7 @@ def org_track_records_notify(org_id):
 
         return jsonify({"success": True, "resend_response": resend_response})
     except Exception as exc:
-        return jsonify({"error": f"Failed to send email via Resend: {str(exc)}"}), 500
+        return jsonify({"error": f"Failed to send email via Resend: {exc!s}"}), 500
 
 
 def register_routes(app):

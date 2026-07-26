@@ -1,8 +1,17 @@
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
+
 from speedhive.utils.lap_analysis import first_non_empty, safe_int
-from app.utils import cache_meta, utc_now, parse_iso_utc, iso_utc, _country_name_from_value
+
+from app.utils import (
+    _country_name_from_value,
+    cache_meta,
+    iso_utc,
+    parse_iso_utc,
+    utc_now,
+)
 
 # Constants
 MAX_ORG_EVENTS = 150
@@ -12,9 +21,9 @@ def store_fetch(
     fetcher: Callable[[], Any],
     force_refresh: bool = False,
     *,
-    db_reader: Optional[Callable[[], tuple[Any, Optional[datetime]]]] = None,
-    db_writer: Optional[Callable[[Any, Optional[datetime]], None]] = None,
-) -> tuple[Any, Dict[str, Any]]:
+    db_reader: Callable[[], tuple[Any, datetime | None]] | None = None,
+    db_writer: Callable[[Any, datetime | None], None] | None = None,
+) -> tuple[Any, dict[str, Any]]:
     if not force_refresh and db_reader is not None:
         db_cached, db_saved_at = db_reader()
         if db_cached is not None:
@@ -33,26 +42,26 @@ def store_fetch(
         raise
 
 
-def db_stored_record(getter: Callable[[], Any]) -> tuple[Any, Optional[datetime]]:
+def db_stored_record(getter: Callable[[], Any]) -> tuple[Any, datetime | None]:
     record = getter()
     saved_at = parse_iso_utc(record.saved_at) if getattr(record, "saved_at", None) else None
     return getattr(record, "payload", None), saved_at
 
 
-def read_from_store(getter: Callable[[], Any], *, empty_value: Any) -> tuple[Any, Dict[str, Any]]:
+def read_from_store(getter: Callable[[], Any], *, empty_value: Any) -> tuple[Any, dict[str, Any]]:
     payload, saved_at = db_stored_record(getter)
     if payload is None:
         payload = empty_value
     return payload, cache_meta(saved_at, source="db")
 
 
-def read_organization_from_store(org_id: int) -> tuple[Dict[str, Any], Dict[str, Any]]:
+def read_organization_from_store(org_id: int) -> tuple[dict[str, Any], dict[str, Any]]:
     from app import storage
     payload, meta = read_from_store(lambda: storage.get_organization(org_id), empty_value={})
     return payload if isinstance(payload, dict) else {}, meta
 
 
-def get_org_view(org_id: int, client: Any = None) -> Dict[str, Any]:
+def get_org_view(org_id: int, client: Any = None) -> dict[str, Any]:
     """Org dict enriched with `_display_location` for the shared org header/nav.
 
     If nothing is cached and a Speedhive client is given, falls back to a live
@@ -82,61 +91,61 @@ def get_org_view(org_id: int, client: Any = None) -> Dict[str, Any]:
     return org_view
 
 
-def read_championships_from_store(org_id: int) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
+def read_championships_from_store(org_id: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     from app import storage
     payload, meta = read_from_store(lambda: storage.get_championships(org_id), empty_value=[])
     return payload if isinstance(payload, list) else [], meta
 
 
-def read_events_from_store(org_id: int) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
+def read_events_from_store(org_id: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     from app import storage
     payload, meta = read_from_store(lambda: storage.get_events(org_id), empty_value=[])
     return payload if isinstance(payload, list) else [], meta
 
 
-def read_event_from_store(event_id: int) -> tuple[Dict[str, Any], Dict[str, Any]]:
+def read_event_from_store(event_id: int) -> tuple[dict[str, Any], dict[str, Any]]:
     from app import storage
     payload, meta = read_from_store(lambda: storage.get_event(event_id), empty_value={})
     return payload if isinstance(payload, dict) else {}, meta
 
 
-def read_event_sessions_from_store(event_id: int) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
+def read_event_sessions_from_store(event_id: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     from app import storage
     payload, meta = read_from_store(lambda: storage.get_event_sessions(event_id), empty_value=[])
     return payload if isinstance(payload, list) else [], meta
 
 
-def read_session_from_store(session_id: int) -> tuple[Dict[str, Any], Dict[str, Any]]:
+def read_session_from_store(session_id: int) -> tuple[dict[str, Any], dict[str, Any]]:
     from app import storage
     payload, meta = read_from_store(lambda: storage.get_session(session_id), empty_value={})
     return payload if isinstance(payload, dict) else {}, meta
 
 
-def read_results_from_store(session_id: int) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
+def read_results_from_store(session_id: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     from app import storage
     payload, meta = read_from_store(lambda: storage.get_results(session_id), empty_value=[])
     return payload if isinstance(payload, list) else [], meta
 
 
-def read_announcements_from_store(session_id: int) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
+def read_announcements_from_store(session_id: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     from app import storage
     payload, meta = read_from_store(lambda: storage.get_announcements(session_id), empty_value=[])
     return payload if isinstance(payload, list) else [], meta
 
 
-def read_laps_from_store(session_id: int) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
+def read_laps_from_store(session_id: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     from app import storage
     payload, meta = read_from_store(lambda: storage.get_laps(session_id), empty_value=[])
     return payload if isinstance(payload, list) else [], meta
 
 
-def read_lap_chart_from_store(session_id: int) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
+def read_lap_chart_from_store(session_id: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     from app import storage
     payload, meta = read_from_store(lambda: storage.get_lap_chart(session_id), empty_value=[])
     return payload if isinstance(payload, list) else [], meta
 
 
-def get_org_store_status(org_id: int) -> Dict[str, Any]:
+def get_org_store_status(org_id: int) -> dict[str, Any]:
     from app import storage
     status = storage.get_org_status(org_id)
     if status.get("last_refresh_at"):
@@ -154,8 +163,8 @@ def get_org_store_status(org_id: int) -> Dict[str, Any]:
     return cache_meta(None, source="cache-status")
 
 
-def get_organization_stored(org_id: int, force_refresh: bool = False) -> tuple[Dict[str, Any], Dict[str, Any]]:
-    from app import storage, client
+def get_organization_stored(org_id: int, force_refresh: bool = False) -> tuple[dict[str, Any], dict[str, Any]]:
+    from app import client, storage
     data, meta = store_fetch(
         lambda: client.get_organization(org_id) or {"id": org_id, "name": f"Organization #{org_id}"},
         force_refresh=force_refresh,
@@ -171,8 +180,8 @@ def get_organization_stored(org_id: int, force_refresh: bool = False) -> tuple[D
     return data, meta
 
 
-def get_championships_stored(org_id: int, force_refresh: bool = False) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
-    from app import storage, client
+def get_championships_stored(org_id: int, force_refresh: bool = False) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    from app import client, storage
     data, meta = store_fetch(
         lambda: client.get_championships(org_id) or [],
         force_refresh=force_refresh,
@@ -186,9 +195,9 @@ def get_championships_stored(org_id: int, force_refresh: bool = False) -> tuple[
     return data if isinstance(data, list) else [], meta
 
 
-def fetch_org_events(org_id: int) -> List[Dict[str, Any]]:
+def fetch_org_events(org_id: int) -> list[dict[str, Any]]:
     from app import client
-    events: List[Dict[str, Any]] = []
+    events: list[dict[str, Any]] = []
     try:
         for event in client.iter_events(org_id):
             if isinstance(event, dict):
@@ -201,7 +210,7 @@ def fetch_org_events(org_id: int) -> List[Dict[str, Any]]:
     return events
 
 
-def get_events_stored(org_id: int, force_refresh: bool = False) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
+def get_events_stored(org_id: int, force_refresh: bool = False) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     from app import storage
     data, meta = store_fetch(
         lambda: fetch_org_events(org_id),
@@ -216,8 +225,8 @@ def get_events_stored(org_id: int, force_refresh: bool = False) -> tuple[List[Di
     return data if isinstance(data, list) else [], meta
 
 
-def get_event_stored(event_id: int, force_refresh: bool = False) -> tuple[Dict[str, Any], Dict[str, Any]]:
-    from app import storage, client
+def get_event_stored(event_id: int, force_refresh: bool = False) -> tuple[dict[str, Any], dict[str, Any]]:
+    from app import client, storage
     data, meta = store_fetch(
         lambda: client.get_event(event_id, include_sessions=True) or {},
         force_refresh=force_refresh,
@@ -232,8 +241,8 @@ def get_event_stored(event_id: int, force_refresh: bool = False) -> tuple[Dict[s
     return data if isinstance(data, dict) else {}, meta
 
 
-def get_sessions_stored(event_id: int, force_refresh: bool = False) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
-    from app import storage, client
+def get_sessions_stored(event_id: int, force_refresh: bool = False) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    from app import client, storage
     event_payload, _ = get_event_stored(event_id, force_refresh=False)
     event_org_id = _infer_event_org_id(event_payload)
     data, meta = store_fetch(
@@ -250,8 +259,8 @@ def get_sessions_stored(event_id: int, force_refresh: bool = False) -> tuple[Lis
     return data if isinstance(data, list) else [], meta
 
 
-def get_session_stored(session_id: int, force_refresh: bool = False) -> tuple[Dict[str, Any], Dict[str, Any]]:
-    from app import storage, client
+def get_session_stored(session_id: int, force_refresh: bool = False) -> tuple[dict[str, Any], dict[str, Any]]:
+    from app import client, storage
     data, meta = store_fetch(
         lambda: client.get_session(session_id) or {},
         force_refresh=force_refresh,
@@ -267,8 +276,8 @@ def get_session_stored(session_id: int, force_refresh: bool = False) -> tuple[Di
     return data if isinstance(data, dict) else {}, meta
 
 
-def get_results_stored(session_id: int, force_refresh: bool = False) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
-    from app import storage, client
+def get_results_stored(session_id: int, force_refresh: bool = False) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    from app import client, storage
     session_payload, _ = get_session_stored(session_id, force_refresh=False)
     event_id = _infer_session_event_id(session_payload)
     data, meta = store_fetch(
@@ -286,8 +295,8 @@ def get_results_stored(session_id: int, force_refresh: bool = False) -> tuple[Li
     return data if isinstance(data, list) else [], meta
 
 
-def get_announcements_stored(session_id: int, force_refresh: bool = False) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
-    from app import storage, client
+def get_announcements_stored(session_id: int, force_refresh: bool = False) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    from app import client, storage
     session_payload, _ = get_session_stored(session_id, force_refresh=False)
     event_id = _infer_session_event_id(session_payload)
     data, meta = store_fetch(
@@ -305,8 +314,8 @@ def get_announcements_stored(session_id: int, force_refresh: bool = False) -> tu
     return data if isinstance(data, list) else [], meta
 
 
-def get_laps_stored(session_id: int, force_refresh: bool = False) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
-    from app import storage, client
+def get_laps_stored(session_id: int, force_refresh: bool = False) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    from app import client, storage
     session_payload, _ = get_session_stored(session_id, force_refresh=False)
     event_id = _infer_session_event_id(session_payload)
     data, meta = store_fetch(
@@ -324,8 +333,8 @@ def get_laps_stored(session_id: int, force_refresh: bool = False) -> tuple[List[
     return data if isinstance(data, list) else [], meta
 
 
-def get_lap_chart_stored(session_id: int, force_refresh: bool = False) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
-    from app import storage, client
+def get_lap_chart_stored(session_id: int, force_refresh: bool = False) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    from app import client, storage
     session_payload, _ = get_session_stored(session_id, force_refresh=False)
     event_id = _infer_session_event_id(session_payload)
     data, meta = store_fetch(
@@ -343,7 +352,7 @@ def get_lap_chart_stored(session_id: int, force_refresh: bool = False) -> tuple[
     return data if isinstance(data, list) else [], meta
 
 
-def _infer_event_org_id(event_payload: Any) -> Optional[int]:
+def _infer_event_org_id(event_payload: Any) -> int | None:
     if not isinstance(event_payload, dict):
         return None
     organization = event_payload.get("organization")
@@ -366,7 +375,7 @@ def _infer_event_org_id(event_payload: Any) -> Optional[int]:
     )
 
 
-def _infer_session_event_id(session_payload: Any) -> Optional[int]:
+def _infer_session_event_id(session_payload: Any) -> int | None:
     if not isinstance(session_payload, dict):
         return None
     return safe_int(
@@ -378,14 +387,14 @@ def _infer_session_event_id(session_payload: Any) -> Optional[int]:
     )
 
 
-def read_org_refresh_state(org_id: int) -> Dict[str, Any]:
+def read_org_refresh_state(org_id: int) -> dict[str, Any]:
     from app import storage
     return storage.get_org_status(org_id)
 
 
-def list_stored_orgs() -> List[Dict[str, Any]]:
+def list_stored_orgs() -> list[dict[str, Any]]:
     from app import storage
-    org_map: Dict[int, Dict[str, Any]] = {}
+    org_map: dict[int, dict[str, Any]] = {}
     for row in storage.list_organizations():
         org_id_int = safe_int(row.get("org_id"), None)
         if org_id_int is None:
@@ -403,15 +412,16 @@ def scan_track_records_from_synced_store(
     classification: str,
     start_date,
     end_date,
-    limit_events: Optional[int],
-) -> tuple[List[Dict[str, Any]], int, Optional[str], Dict[str, Any]]:
-    from app import storage
-    from app.utils import extract_event_datetime, parse_date_to_comparison
+    limit_events: int | None,
+) -> tuple[list[dict[str, Any]], int, str | None, dict[str, Any]]:
     from speedhive.utils.lap_analysis import parse_track_record_text
 
-    records: List[Dict[str, Any]] = []
+    from app import storage
+    from app.utils import extract_event_datetime, parse_date_to_comparison
+
+    records: list[dict[str, Any]] = []
     events_scanned = 0
-    error: Optional[str] = None
+    error: str | None = None
     events_payload, events_saved_at = db_stored_record(lambda: storage.get_events(org_id))
     events = events_payload if isinstance(events_payload, list) else []
     events_meta = cache_meta(events_saved_at, source="db") if events_saved_at else cache_meta(None, source="db")
@@ -435,7 +445,7 @@ def scan_track_records_from_synced_store(
             if end_date and e_date and e_date > end_date:
                 continue
 
-            sessions_payload, _ = db_stored_record(lambda: storage.get_event_sessions(eid))
+            sessions_payload, _ = db_stored_record(lambda eid=eid: storage.get_event_sessions(eid))
             sessions = sessions_payload if isinstance(sessions_payload, list) else []
             events_scanned += 1
             for session in sessions:
@@ -445,7 +455,7 @@ def scan_track_records_from_synced_store(
                 sname = session.get("name")
                 if sid is None:
                     continue
-                announcements_payload, _ = db_stored_record(lambda: storage.get_announcements(sid))
+                announcements_payload, _ = db_stored_record(lambda sid=sid: storage.get_announcements(sid))
                 announcements = announcements_payload if isinstance(announcements_payload, list) else []
                 for ann in announcements:
                     if not isinstance(ann, dict):
@@ -495,7 +505,7 @@ def _dump_manifest_path(dump_dir: Path) -> Path:
     return dump_dir / "manifest.json"
 
 
-def _read_dump_manifest(dump_dir: Path) -> Optional[Dict[str, Any]]:
+def _read_dump_manifest(dump_dir: Path) -> dict[str, Any] | None:
     from app.utils import read_json_file
     manifest_path = _dump_manifest_path(dump_dir)
     if not manifest_path.exists():
@@ -503,7 +513,7 @@ def _read_dump_manifest(dump_dir: Path) -> Optional[Dict[str, Any]]:
     return read_json_file(manifest_path)
 
 
-def _dump_dir_name(saved_at: Optional[str]) -> str:
+def _dump_dir_name(saved_at: str | None) -> str:
     from datetime import timezone
     saved_dt = parse_iso_utc(saved_at)
     if not saved_dt:
@@ -511,7 +521,7 @@ def _dump_dir_name(saved_at: Optional[str]) -> str:
     return saved_dt.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
 
-def _archive_existing_latest_dump(org_id: int) -> Optional[Path]:
+def _archive_existing_latest_dump(org_id: int) -> Path | None:
     import shutil
     from datetime import timezone
     dump_root = _dump_root_for_org(org_id)
@@ -545,7 +555,7 @@ def _archive_existing_latest_dump(org_id: int) -> Optional[Path]:
     return archive_root
 
 
-def _resolve_dump_dir_for_org(org_id: int, dump_key: Optional[str]) -> Optional[Path]:
+def _resolve_dump_dir_for_org(org_id: int, dump_key: str | None) -> Path | None:
     dump_root = _dump_root_for_org(org_id)
     if dump_key in (None, "", "latest"):
         return dump_root
@@ -604,10 +614,10 @@ def _prune_empty_dump_roots(org_id: int) -> None:
             dump_root.rmdir()
 
 
-def _list_org_dumps(org_id: int) -> List[Dict[str, Any]]:
+def _list_org_dumps(org_id: int) -> list[dict[str, Any]]:
     from flask import url_for
     dump_root = _dump_root_for_org(org_id)
-    dumps: List[Dict[str, Any]] = []
+    dumps: list[dict[str, Any]] = []
 
     latest_manifest = _read_dump_manifest(dump_root)
     if latest_manifest:
@@ -623,7 +633,7 @@ def _list_org_dumps(org_id: int) -> List[Dict[str, Any]]:
 
     history_root = _dump_history_root_for_org(org_id)
     if history_root.exists():
-        archived: List[Dict[str, Any]] = []
+        archived: list[dict[str, Any]] = []
         for archive_dir in history_root.iterdir():
             if not archive_dir.is_dir():
                 continue
@@ -646,10 +656,11 @@ def _list_org_dumps(org_id: int) -> List[Dict[str, Any]]:
     return dumps
 
 
-def save_org_dump(org_id: int, force_refresh: bool = False, max_events: Optional[int] = None) -> Dict[str, Any]:
+def save_org_dump(org_id: int, force_refresh: bool = False, max_events: int | None = None) -> dict[str, Any]:
     import shutil
     import tempfile
-    from app import storage, export_db_dump
+
+    from app import export_db_dump, storage
     from app.tasks import DATA_ROOT
     
     dumps_root = DATA_ROOT / "saved_dumps"
@@ -665,14 +676,14 @@ def save_org_dump(org_id: int, force_refresh: bool = False, max_events: Optional
         shutil.rmtree(staging_dir, ignore_errors=True)
 
 
-def format_saved_at_display(saved_at_value: Optional[str]) -> str:
+def format_saved_at_display(saved_at_value: str | None) -> str:
     saved_dt = parse_iso_utc(saved_at_value)
     if not saved_dt:
         return "Never"
     return saved_dt.astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
 
 
-def store_status_label(meta: Dict[str, Any]) -> str:
+def store_status_label(meta: dict[str, Any]) -> str:
     saved_at = format_saved_at_display(meta.get("saved_at"))
     age_hours = meta.get("age_hours")
     if age_hours is None:

@@ -3,6 +3,7 @@ import os
 import sys
 import tempfile
 from pathlib import Path
+
 import pytest
 
 # Add parent directory of tests folder to Python path
@@ -23,7 +24,7 @@ def setup_test_env():
 @pytest.fixture
 def client():
     """A logged-in client (the whole UI sits behind the site password)."""
-    from app import app, UI_PASSWORD
+    from app import UI_PASSWORD, app
     app.config["TESTING"] = True
     with app.test_client() as client:
         client.post("/login", data={"password": UI_PASSWORD})
@@ -126,6 +127,7 @@ def test_track_records_ndjson_import_rejects_bad_lines(client):
 
 def test_operations_lists_multiple_dump_snapshots(client, monkeypatch):
     import json as jsonlib
+
     import app as app_module
 
     saved_at_values = iter([
@@ -254,8 +256,8 @@ def test_driver_laps_page_missing(client):
 
 def test_upload_local_dump_success(client, monkeypatch):
     """Test importing an offline ZIP dump successfully."""
-    import zipfile
     import io
+    import zipfile
     
     # Mock import_dump_to_storage
     mock_summary = {"events": 5, "sessions": 10, "results": 20, "laps": 100, "announcements": 2}
@@ -289,8 +291,10 @@ def test_upload_local_dump_success(client, monkeypatch):
 
 
 def test_settings_page_overrides_and_fallback(client, monkeypatch):
-    from speedhive.settings import get_org_env_var, get_org_env_var_override
     import json as jsonlib
+
+    from speedhive.settings import get_org_env_var, get_org_env_var_override
+
     from app import data_root
 
     org_id = 777
@@ -365,10 +369,11 @@ def test_auto_notify_sends_email_for_pending_candidates(monkeypatch):
     auto-notification: _auto_notify_for_org referenced an undefined `p`
     instead of computing it via paths_for_org, so the review-queue email
     never actually sent even when everything was configured correctly."""
+    from speedhive.stores.track_records import paths_for_org
+    from speedhive.workflows.track_records import curation as track_records
+
     from app import data_root
     from app.notifications import _auto_notify_for_org
-    from speedhive.workflows.track_records import curation as track_records
-    from speedhive.stores.track_records import paths_for_org
 
     org_id = 555
     settings_file = Path(data_root) / "orgs" / str(org_id) / "settings.json"
@@ -418,6 +423,7 @@ def test_send_resend_notification_sets_real_user_agent(monkeypatch):
     403 (Cloudflare error 1010) -- the request must always carry an
     explicit, real User-Agent header."""
     import urllib.request
+
     from app.notifications import _send_resend_notification
 
     captured = {}
@@ -453,7 +459,7 @@ def test_send_resend_notification_sets_real_user_agent(monkeypatch):
 
 
 def test_select_classes_for_chart_no_selection_falls_back_to_top_8():
-    from app.routes.stats import _select_classes_for_chart, MAX_DISPLAYED_CLASSES
+    from app.routes.stats import MAX_DISPLAYED_CLASSES, _select_classes_for_chart
 
     chart_data = {
         "years": [2024, 2025],
@@ -486,7 +492,7 @@ def test_select_classes_for_chart_explicit_selection_preserves_volume_order():
 
 
 def test_select_classes_for_chart_truncates_selection_to_8():
-    from app.routes.stats import _select_classes_for_chart, MAX_DISPLAYED_CLASSES
+    from app.routes.stats import MAX_DISPLAYED_CLASSES, _select_classes_for_chart
 
     classes = [f"C{i}" for i in range(12)]
     chart_data = {
@@ -582,7 +588,7 @@ def test_stats_freshness_no_data():
 
 def test_stats_freshness_detects_stale_and_fresh():
     import app as app_module
-    from app.routes.stats import stats_freshness, _store_org_stats_payload
+    from app.routes.stats import _store_org_stats_payload, stats_freshness
 
     org_id = 424242
     storage = app_module.storage
@@ -604,7 +610,7 @@ def test_stats_freshness_detects_stale_and_fresh():
 
 def test_stats_freshness_ignores_incidental_variants_and_flags_them_per_variant():
     import app as app_module
-    from app.routes.stats import stats_freshness, _store_org_stats_payload
+    from app.routes.stats import _store_org_stats_payload, stats_freshness
 
     org_id = 464646
     storage = app_module.storage
@@ -687,7 +693,7 @@ def test_recalc_scope_all_prunes_abandoned_variants_but_never_primaries(monkeypa
     for name in ("_recalc_wins_podiums", "_recalc_driver_directory"):
         monkeypatch.setattr(stats_module, name, lambda o: None)
 
-    recalculated, failures, pruned = stats_module._recalc_all_stats_for_org(org_id, scope="all")
+    _recalculated, _failures, pruned = stats_module._recalc_all_stats_for_org(org_id, scope="all")
     assert pruned == 1
     with storage.connect() as conn:
         keys = {r["session_type"] for r in conn.execute("SELECT session_type FROM org_stats WHERE org_id = ?", (org_id,)).fetchall()}
@@ -697,7 +703,12 @@ def test_recalc_scope_all_prunes_abandoned_variants_but_never_primaries(monkeypa
 
 
 def test_trigger_while_running_sets_rerun_flag():
-    from app.tasks import _new_recalc_stats_task, trigger_stats_recalc, _get_task, _update_task
+    from app.tasks import (
+        _get_task,
+        _new_recalc_stats_task,
+        _update_task,
+        trigger_stats_recalc,
+    )
 
     org_id = 494949
     # Simulate an in-flight recalc (row exists with status running, no thread)
@@ -714,7 +725,7 @@ def test_trigger_while_running_sets_rerun_flag():
 
 def test_accessed_at_touched_on_cached_page_view(client):
     import app as app_module
-    from app.routes.stats import _store_org_stats_payload, WINS_PODIUMS_CACHE_KEY
+    from app.routes.stats import WINS_PODIUMS_CACHE_KEY, _store_org_stats_payload
 
     org_id = 454545  # seeded with a session by the generate-all test
     storage = app_module.storage
@@ -740,7 +751,8 @@ def test_accessed_at_touched_on_cached_page_view(client):
 
 def test_recalc_stats_task_runs_and_guards_double_start():
     import time
-    from app.tasks import trigger_stats_recalc, _get_task
+
+    from app.tasks import _get_task, trigger_stats_recalc
 
     org_id = 434343
     task_id = trigger_stats_recalc(org_id)

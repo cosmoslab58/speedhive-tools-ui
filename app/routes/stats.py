@@ -1,17 +1,19 @@
 import json
 import re
-from flask import request, redirect, url_for, render_template, current_app
+
+from flask import current_app, redirect, render_template, request, url_for
+from speedhive.settings import get_stats_min_laps, read_org_settings
+from speedhive.utils.lap_analysis import first_non_empty
+
 from app import storage
 from app.db import get_org_view, read_events_from_store
+from app.tasks import DATA_ROOT, TRACK_RECORDS_ROOT
 from app.utils import (
     format_datetime_display,
     format_seconds,
     iso_utc,
     utc_now,
 )
-from app.tasks import DATA_ROOT, TRACK_RECORDS_ROOT
-from speedhive.settings import get_stats_min_laps, read_org_settings
-from speedhive.utils.lap_analysis import first_non_empty
 
 MAX_DISPLAYED_CLASSES = 8
 
@@ -75,7 +77,7 @@ def org_stats(org_id):
 
     org_view = get_org_view(org_id_int)
 
-    events_data, events_meta = read_events_from_store(org_id_int)
+    _events_data, events_meta = read_events_from_store(org_id_int)
     cache_status = events_meta
 
     has_db_stats = storage.org_has_sessions(org_id_int)
@@ -144,7 +146,7 @@ def org_stats(org_id):
         consistency_total = len(cv_rank_rows)
 
         # All-drivers directory (race starts/wins/podiums with ranks)
-        directory, directory_calculated_at = _load_driver_directory(org_id_int)
+        directory, _directory_calculated_at = _load_driver_directory(org_id_int)
 
         # Map normalized keys back to the clustered representative name so
         # table links hit the report's exact-match path and the CV join works
@@ -234,10 +236,11 @@ def _recalc_consistency_stats(org_id_int, session_types_list, ignore_outliers):
     session-types/ignore-outliers combination. Shared by the Stats page's
     Recalculate button and the Operations page's recalculate-all action."""
     from speedhive.analyzers.analyze_consistency import (
-        load_session_types_from_storage,
         aggregate_by_name,
         cluster_names,
+        load_session_types_from_storage,
     )
+
     from app.analysis_cache import get_org_analysis
 
     session_types_list = sorted(session_types_list)
@@ -301,6 +304,7 @@ def _recalc_driver_directory(org_id_int):
     tiles, and the recalculate-all action."""
     from speedhive.analyzers.analyze_consistency import load_session_types_from_storage
     from speedhive.analyzers.analyze_results import compute_driver_directory
+
     from app.analysis_cache import get_org_analysis
 
     # bundle results are already deduped, so no laps_payloads needed
@@ -491,8 +495,8 @@ def driver_stats_breakdown(org_id, driver_name):
 
     org_view = get_org_view(org_id_int)
 
-    from speedhive.workflows.track_records import curation as track_records
     from speedhive.utils.lap_analysis import normalize_classification
+    from speedhive.workflows.track_records import curation as track_records
     
     # Load class alias map and curated track records
     tr_paths = track_records.paths_for_org(TRACK_RECORDS_ROOT, org_id_int)
@@ -531,7 +535,7 @@ def driver_stats_breakdown(org_id, driver_name):
             total_drivers_consistency = len(driver_cvs)
             
             # Find the rank of our driver
-            for idx, (name, cv) in enumerate(driver_cvs):
+            for idx, (name, _cv) in enumerate(driver_cvs):
                 if name == driver_name or name in aliases or normalize_name(name) in normalized_aliases:
                     consistency_rank = idx + 1
                     break
@@ -545,11 +549,13 @@ def driver_stats_breakdown(org_id, driver_name):
 
     try:
         from collections import defaultdict
-        from speedhive.utils.lap_analysis import normalize_name
+
         from speedhive.analyzers.analyze_consistency import (
             load_session_types_from_storage,
             matches_session_type,
         )
+        from speedhive.utils.lap_analysis import normalize_name
+
         from app.analysis_cache import get_org_analysis
 
         bundle = get_org_analysis(storage, org_id_int, ignore_outliers)
@@ -898,7 +904,7 @@ def driver_stats_breakdown(org_id, driver_name):
                 sorted_laps = class_rankings[cls]
                 total_in_class = len(sorted_laps)
                 driver_rank = None
-                for idx, (norm_name, lap_time) in enumerate(sorted_laps):
+                for idx, (norm_name, _lap_time) in enumerate(sorted_laps):
                     if norm_name == normalize_name(driver_name) or norm_name in normalized_aliases:
                         driver_rank = idx + 1
                         break
@@ -928,7 +934,7 @@ def driver_stats_breakdown(org_id, driver_name):
             org=org_view,
             org_id=org_id_int,
             driver_name=driver_name,
-            aliases=sorted(list(aliases)),
+            aliases=sorted(aliases),
             overall_stats=overall_stats,
             driver_sessions=driver_sessions,
             session_types=session_types_list,
@@ -1178,13 +1184,14 @@ def _recalc_class_pace(org_id_int, session_types_list, ignore_outliers):
     session-types/ignore-outliers combination. Shared by the Class Pace and
     Participation pages' Recalculate buttons and the Operations page's
     recalculate-all action."""
-    from speedhive.analyzers.analyze_consistency import load_session_types_from_storage
     from speedhive.analyzers.analyze_class_pace import (
         compute_avg_lap_by_class_year,
         compute_participation_by_class_year,
         compute_participation_by_year,
     )
+    from speedhive.analyzers.analyze_consistency import load_session_types_from_storage
     from speedhive.workflows.track_records import curation as track_records
+
     from app.analysis_cache import get_org_analysis
 
     session_types_list = sorted(session_types_list)
@@ -1326,7 +1333,11 @@ def org_most_improved(org_id):
             # automatically recalculate inline to cache the full list of drivers.
             if most_improved is not None and len(most_improved) <= 15:
                 try:
-                    from speedhive.analyzers.analyze_consistency import get_most_improved_rankings, load_session_types_from_storage
+                    from speedhive.analyzers.analyze_consistency import (
+                        get_most_improved_rankings,
+                        load_session_types_from_storage,
+                    )
+
                     from app.analysis_cache import get_org_analysis
 
                     enriched = get_org_analysis(storage, org_id_int, ignore_outliers)["enriched"]
@@ -1374,7 +1385,11 @@ def _recalc_most_improved(org_id_int, session_types_list, ignore_outliers):
     session-types/ignore-outliers combination. Shared by the Most Improved
     page's Recalculate button and the Operations page's recalculate-all
     action."""
-    from speedhive.analyzers.analyze_consistency import load_session_types_from_storage, get_most_improved_rankings
+    from speedhive.analyzers.analyze_consistency import (
+        get_most_improved_rankings,
+        load_session_types_from_storage,
+    )
+
     from app.analysis_cache import get_org_analysis
 
     session_types_list = sorted(session_types_list)
@@ -1476,8 +1491,13 @@ def org_wins_podiums(org_id):
             # automatically recalculate inline to cache the full list of drivers.
             if most_wins is not None and len(most_wins) <= 15:
                 try:
-                    from speedhive.analyzers.analyze_consistency import load_session_types_from_storage
-                    from speedhive.analyzers.analyze_results import get_wins_podiums_rankings
+                    from speedhive.analyzers.analyze_consistency import (
+                        load_session_types_from_storage,
+                    )
+                    from speedhive.analyzers.analyze_results import (
+                        get_wins_podiums_rankings,
+                    )
+
                     from app.analysis_cache import get_org_analysis
 
                     # bundle results are already deduped, so no laps_payloads needed
@@ -1520,6 +1540,7 @@ def _recalc_wins_podiums(org_id_int):
     recalculate-all action."""
     from speedhive.analyzers.analyze_consistency import load_session_types_from_storage
     from speedhive.analyzers.analyze_results import get_wins_podiums_rankings
+
     from app.analysis_cache import get_org_analysis
 
     # bundle results are already deduped, so no laps_payloads needed

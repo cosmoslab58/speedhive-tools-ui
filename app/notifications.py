@@ -1,10 +1,10 @@
 import json
 import sys
-import urllib.request
 import urllib.parse
+import urllib.request
 from pathlib import Path
-from jinja2 import Template
 
+from jinja2 import Template
 from speedhive.workflows.track_records import curation as track_records
 
 
@@ -102,4 +102,4 @@ def _auto_notify_for_org(org_id: int) -> None:
             print(f"[Notifier] Pending candidates for Org {org_id} have not changed. Skipping duplicate email.")
 
     except Exception as exc:
-        print(f"[Notifier] Error executing auto-notification for Org {org_id}: {str(exc)}", file=sys.stderr)
+        print(f"[Notifier] Error executing auto-notification for Org {org_id}: {exc!s}", file=sys.stderr)

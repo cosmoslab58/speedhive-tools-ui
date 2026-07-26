@@ -1,22 +1,28 @@
 import json
-from flask import render_template, Response, request
-from app.db import (
-    read_event_from_store,
-    read_event_sessions_from_store,
-    read_session_from_store,
-    read_results_from_store,
-    read_announcements_from_store,
-    read_lap_chart_from_store,
-    read_laps_from_store,
-)
-from app.utils import format_datetime_display, extract_event_datetime, _country_name_from_value
+
+from flask import Response, render_template, request
 from speedhive.utils.lap_analysis import (
+    build_lap_chart_from_laps,
+    compute_lap_statistics,
     first_non_empty,
     normalize_result_row,
-    build_lap_chart_from_laps,
-    safe_int,
     parse_time_value,
-    compute_lap_statistics,
+    safe_int,
+)
+
+from app.db import (
+    read_announcements_from_store,
+    read_event_from_store,
+    read_event_sessions_from_store,
+    read_lap_chart_from_store,
+    read_laps_from_store,
+    read_results_from_store,
+    read_session_from_store,
+)
+from app.utils import (
+    _country_name_from_value,
+    extract_event_datetime,
+    format_datetime_display,
 )
 
 

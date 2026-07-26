@@ -4,30 +4,43 @@ import tempfile
 import threading
 import zipfile
 from pathlib import Path
-from flask import request, redirect, url_for, render_template, jsonify, Response, send_file, after_this_request
-from app import client, storage
-from app.tasks import (
-    _get_running_task_for_org,
-    _new_task,
-    _run_refresh_task,
-    _get_task,
-    _update_task,
-    MAX_ORG_EVENTS,
+
+from flask import (
+    Response,
+    after_this_request,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    send_file,
+    url_for,
 )
-from app.db import (
-    _dump_root_for_org,
-    _resolve_dump_dir_for_org,
-    _delete_latest_dump_contents,
-    _prune_empty_dump_roots,
-    save_org_dump,
-    format_saved_at_display,
-    _list_org_dumps,
-)
-from speedhive.workflows.refresh_org_cache import refresh_org_cache as refresh_org_cache_bundle
 from speedhive.exporters.export_lap_records import get_lap_records
 from speedhive.ndjson import dumps_ndjson_record
-from speedhive.utils.lap_analysis import safe_int
 from speedhive.storage import SpeedhiveStorage
+from speedhive.utils.lap_analysis import safe_int
+from speedhive.workflows.refresh_org_cache import (
+    refresh_org_cache as refresh_org_cache_bundle,
+)
+
+from app import client, storage
+from app.db import (
+    _delete_latest_dump_contents,
+    _dump_root_for_org,
+    _list_org_dumps,
+    _prune_empty_dump_roots,
+    _resolve_dump_dir_for_org,
+    format_saved_at_display,
+    save_org_dump,
+)
+from app.tasks import (
+    MAX_ORG_EVENTS,
+    _get_running_task_for_org,
+    _get_task,
+    _new_task,
+    _run_refresh_task,
+    _update_task,
+)
 
 DEFAULT_INCREMENTAL_BACKFILL_EVENTS = int(os.environ.get("SPEEDHIVE_INCREMENTAL_BACKFILL_EVENTS", "3"))
 
@@ -356,6 +369,7 @@ def upload_local_dump(org_id):
 
     import shutil
     import tempfile
+
     from speedhive.workflows.import_sqlite_dump import import_dump_to_storage
 
     staging_dir = Path(tempfile.mkdtemp(prefix=f"speedhive_import_{org_id_int}_"))
@@ -433,12 +447,15 @@ def org_operations(org_id):
     from app.db import get_org_view, read_events_from_store, read_org_refresh_state
     org_view = get_org_view(org_id_int)
     org_refresh_state = read_org_refresh_state(org_id_int)
-    events_data, events_meta = read_events_from_store(org_id_int)
+    _events_data, events_meta = read_events_from_store(org_id_int)
     cache_status = events_meta
     dumps_list = _list_org_dumps(org_id_int)
 
-    from app.tasks import _get_running_track_records_task_for_org, _get_running_recalc_stats_task_for_org
     from app.routes.stats import stats_freshness
+    from app.tasks import (
+        _get_running_recalc_stats_task_for_org,
+        _get_running_track_records_task_for_org,
+    )
     running_task = _get_running_task_for_org(org_id_int)
     running_task_id = running_task["task_id"] if running_task else None
     running_track_records_task = _get_running_track_records_task_for_org(org_id_int)

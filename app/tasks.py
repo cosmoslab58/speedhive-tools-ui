@@ -3,10 +3,11 @@ import os
 import threading
 import uuid
 from pathlib import Path
-from typing import Any, Dict, Optional
-from app.utils import iso_utc, utc_now
+from typing import Any
+
 from speedhive.utils.lap_analysis import safe_int
 
+from app.utils import iso_utc, utc_now
 
 # Paths and Constants
 APP_ROOT = Path(__file__).resolve().parent.parent
@@ -42,7 +43,7 @@ def _new_task(org_id: int, mode: str) -> str:
     return task_id
 
 
-def _fetch_task(task_id: str) -> Optional[Dict[str, Any]]:
+def _fetch_task(task_id: str) -> dict[str, Any] | None:
     """Read a task row. Caller must already hold _tasks_lock."""
     from app import storage
     with storage.connect() as conn:
@@ -68,7 +69,7 @@ def _fetch_task(task_id: str) -> Optional[Dict[str, Any]]:
         return task
 
 
-def _get_task(task_id: str) -> Optional[Dict[str, Any]]:
+def _get_task(task_id: str) -> dict[str, Any] | None:
     with _tasks_lock:
         return _fetch_task(task_id)
 
@@ -114,7 +115,7 @@ def _is_stop_requested(task_id: str) -> bool:
     return task is not None and task.get("status") == "stopping"
 
 
-def _get_running_task_for_org(org_id: int) -> Optional[Dict[str, Any]]:
+def _get_running_task_for_org(org_id: int) -> dict[str, Any] | None:
     from app import storage
     with _tasks_lock:
         with storage.connect() as conn:
@@ -161,7 +162,7 @@ def _new_track_records_task(org_id: int) -> str:
     return task_id
 
 
-def _get_track_records_task(org_id: int, task_id: str) -> Optional[Dict[str, Any]]:
+def _get_track_records_task(org_id: int, task_id: str) -> dict[str, Any] | None:
     return _get_task(task_id)
 
 
@@ -169,7 +170,7 @@ def _update_track_records_task(org_id: int, task_id: str, **kwargs) -> None:
     _update_task(task_id, **kwargs)
 
 
-def _get_running_track_records_task_for_org(org_id: int) -> Optional[Dict[str, Any]]:
+def _get_running_track_records_task_for_org(org_id: int) -> dict[str, Any] | None:
     from app import storage
     with _tasks_lock:
         with storage.connect() as conn:
@@ -198,10 +199,11 @@ def _get_running_track_records_task_for_org(org_id: int) -> Optional[Dict[str, A
 
 
 def _run_track_records_sync_task(task_id: str, org_id: int, full: bool, force: bool) -> None:
+    from speedhive.settings import get_bulk_parser_for_org
+    from speedhive.workflows.track_records import curation as track_records
+
     from app import client, storage
     from app.notifications import _auto_notify_for_org
-    from speedhive.workflows.track_records import curation as track_records
-    from speedhive.settings import get_bulk_parser_for_org
 
     def report(phase):
         _update_track_records_task(org_id, task_id, phase=phase)
@@ -258,10 +260,11 @@ def _run_track_records_scan_only_task(task_id: str, org_id: int) -> None:
     """Diff the already-synced cache against the curated list. Never contacts
     Speedhive -- callers are responsible for syncing first (see _run_refresh_task).
     """
+    from speedhive.settings import get_bulk_parser_for_org
+    from speedhive.workflows.track_records import curation as track_records
+
     from app import storage
     from app.notifications import _auto_notify_for_org
-    from speedhive.workflows.track_records import curation as track_records
-    from speedhive.settings import get_bulk_parser_for_org
 
     def report(phase):
         _update_track_records_task(org_id, task_id, phase=phase)
@@ -299,7 +302,7 @@ def _new_recalc_stats_task(org_id: int, scope: str = "primary") -> str:
     return task_id
 
 
-def _get_running_recalc_stats_task_for_org(org_id: int) -> Optional[Dict[str, Any]]:
+def _get_running_recalc_stats_task_for_org(org_id: int) -> dict[str, Any] | None:
     from app import storage
     with _tasks_lock:
         with storage.connect() as conn:
@@ -332,6 +335,7 @@ def _run_recalc_stats_task(task_id: str, org_id: int, scope: str = "primary") ->
     (scope: "primary" = just the default views, "all" = every cached
     variant, with pruning). Purely local -- never contacts Speedhive."""
     import logging
+
     from app.routes.stats import _recalc_all_stats_for_org
 
     logger = logging.getLogger(__name__)
@@ -371,7 +375,7 @@ def _run_recalc_stats_task(task_id: str, org_id: int, scope: str = "primary") ->
         trigger_stats_recalc(org_id, scope=follow_up_scope)
 
 
-def trigger_stats_recalc(org_id: int, scope: str = "primary") -> Optional[str]:
+def trigger_stats_recalc(org_id: int, scope: str = "primary") -> str | None:
     """Fire-and-forget stats recalculation, used after anything that changes
     the synced data (sync completing, backup restore, the public CI sync)
     and by the Settings > Data button (scope="all"). Recalc is expensive, so
@@ -392,11 +396,13 @@ def trigger_stats_recalc(org_id: int, scope: str = "primary") -> Optional[str]:
 
 def _run_refresh_task(task_id: str, org_id: int, mode: str, backfill_events: int) -> None:
     """Run the org refresh in a background thread with progress updates."""
-    from app import client, storage
     from speedhive.workflows.refresh_org_cache import (
-        _event_ids_from_rows, _sorted_event_ids_for_backfill,
+        _event_ids_from_rows,
         _parse_iso_utc,
+        _sorted_event_ids_for_backfill,
     )
+
+    from app import client, storage
 
     try:
         _update_task(task_id, phase="Fetching org metadata")
@@ -412,7 +418,7 @@ def _run_refresh_task(task_id: str, org_id: int, mode: str, backfill_events: int
         }
         previous_session_ids = {
             safe_int(session_id, None)
-            for session_id in storage.load_session_payloads(org_id).keys()
+            for session_id in storage.load_session_payloads(org_id)
             if safe_int(session_id, None) is not None
         }
         prev_full_at = previous_state.get("last_full_refresh_at")
@@ -497,8 +503,7 @@ def _run_refresh_task(task_id: str, org_id: int, mode: str, backfill_events: int
                 sessions_done=0,
             )
 
-            event_sessions_done = 0
-            for session in session_list:
+            for event_sessions_done, session in enumerate(session_list, start=1):
                 if _is_stop_requested(task_id):
                     _update_task(task_id, status="stopped", phase="Stopped", finished_at=iso_utc(utc_now()))
                     return
@@ -526,7 +531,6 @@ def _run_refresh_task(task_id: str, org_id: int, mode: str, backfill_events: int
 
                 known_session_ids.add(sid)
                 refreshed_sessions += 1
-                event_sessions_done += 1
                 _update_task(task_id, sessions_done=event_sessions_done)
 
         # Cleanup stale dirs on full refresh
