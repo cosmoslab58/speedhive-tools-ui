@@ -2,12 +2,11 @@
 install:
     python -m venv venv
     ./venv/bin/pip install --upgrade pip
-    # ruff is pinned: the recipe previously installed it unpinned, so CI
-    # picked up whatever was current that day. 0.16.0 added rules that
-    # produced 312 errors in untouched code and broke every PR, while
-    # main had last gone green on 0.15.22. Bump deliberately, not by
-    # accident of timing.
-    ./venv/bin/pip install 'ruff==0.15.22' pytest
+    # Both pinned. Unpinned, CI linted against whatever ruff shipped that
+    # week: 0.15 enabled 59 rules, 0.16 enabled 413, and a green build
+    # turned into 312 errors in untouched code. lint rule selection is
+    # now explicit in .ruff.toml too, so a bump is a deliberate act.
+    ./venv/bin/pip install 'ruff==0.16.0' 'pytest==9.1.1'
     ./venv/bin/pip install -r requirements.txt
     ./venv/bin/pip install -e ./speedhive-tools
 

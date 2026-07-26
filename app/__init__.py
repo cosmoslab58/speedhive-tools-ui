@@ -1,11 +1,13 @@
 import json
 import os
 from pathlib import Path
+
 from dotenv import load_dotenv
-from flask import Flask, session, request, redirect, url_for
+from flask import Flask, redirect, request, session, url_for
+from speedhive.exporters.export_db_dump import export_db_dump  # noqa: F401
 from speedhive.storage import SpeedhiveStorage
 from speedhive.wrapper import SpeedhiveClient
-from speedhive.exporters.export_db_dump import export_db_dump  # noqa: F401
+
 from app.utils import iso_utc, utc_now
 
 load_dotenv()
@@ -127,8 +129,8 @@ def create_app() -> Flask:
     from app.routes.dashboard import register_routes as reg_dashboard
     from app.routes.organizations import register_routes as reg_org
     from app.routes.sessions import register_routes as reg_sessions
-    from app.routes.track_records import register_routes as reg_track_records
     from app.routes.stats import register_routes as reg_stats
+    from app.routes.track_records import register_routes as reg_track_records
     
     reg_auth(app)
     reg_dashboard(app)
@@ -139,10 +141,12 @@ def create_app() -> Flask:
 
     @app.context_processor
     def inject_global_data():
-        from flask import request, session
         from datetime import datetime
+
+        from flask import request, session
         from speedhive.utils.lap_analysis import parse_time_value
-        from app.db import list_stored_orgs, format_saved_at_display, store_status_label
+
+        from app.db import format_saved_at_display, list_stored_orgs, store_status_label
 
         org_list = list_stored_orgs()
 

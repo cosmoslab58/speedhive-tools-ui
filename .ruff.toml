@@ -2,3 +2,44 @@
 exclude = [
     "speedhive-tools",
 ]
+
+[lint]
+# Rule selection is explicit on purpose. It used to be unset, which meant the
+# lint surface was whatever ruff shipped as its default that week -- 0.15
+# enabled 59 rules (E, F), 0.16 enabled 413 across 38 families, so a routine
+# version bump turned a green build into 312 errors in untouched code.
+# Adding a family here is now a deliberate decision, not an accident of timing.
+select = [
+    "E4",   # pycodestyle: imports  (E1/E2/E3/E501 are formatter
+    "E7",   # pycodestyle: statements   concerns, not linting --
+    "E9",   # pycodestyle: runtime      this matches ruff's own default)
+    "F",    # pyflakes
+    "I",    # import sorting
+    "UP",   # pyupgrade -- modern syntax for the pinned Python
+    "B",    # bugbear -- real bug classes, e.g. loop-variable capture
+    "C4",   # comprehension correctness
+    "DTZ",  # naive datetimes; this app compares race timestamps
+    "SIM",  # obvious simplifications
+    "RUF",  # ruff's own checks
+    "PLE",  # pylint errors
+    "PLW",  # pylint warnings
+]
+# Deliberately NOT selected: BLE (78 hits) and S110 (22). Broad `except
+# Exception: pass` is load-bearing here -- the Speedhive sync must survive
+# partial upstream failures rather than abort a whole run. Revisit as its own
+# piece of work if that changes.
+
+ignore = [
+    # Style, not correctness. Each has many hits and matches a deliberate
+    # convention in this codebase; flipping them would be churn across files
+    # rather than a fix. Worth revisiting as its own change, not as a side
+    # effect of a ruff upgrade.
+    "SIM105",  # try/except/pass -> contextlib.suppress (13x, defensive sync code)
+    "SIM117",  # combine nested `with` (6x)
+    "SIM108",  # if/else -> ternary (4x)
+    "SIM102",  # collapsible nested if (3x)
+    # Intentional in this app:
+    "PLW0603", # `global` for module-level caches, which is how Flask state is held here
+    "SIM115",  # NamedTemporaryFile(delete=False) deliberately outlives its block
+    "RUF001",  # en dash in user-facing display strings is intended typography
+]

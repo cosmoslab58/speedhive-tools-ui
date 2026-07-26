@@ -1,28 +1,30 @@
-from datetime import datetime
-from flask import render_template, request, session, redirect, url_for, jsonify
-from app import client
-from app.db import (
-    list_stored_orgs,
-    get_org_view,
-    read_events_from_store,
-    read_championships_from_store,
-    read_org_refresh_state,
-    scan_track_records_from_synced_store,
-    read_event_sessions_from_store,
-    read_results_from_store,
-)
-from app.utils import (
-    parse_date_to_comparison,
-    extract_event_datetime,
-    format_datetime_display,
-)
-from app.tasks import MAX_ORG_EVENTS
+from datetime import date
+
+from flask import jsonify, redirect, render_template, request, session, url_for
 from speedhive.utils.lap_analysis import (
     first_non_empty,
-    normalize_search_text,
     name_match_score,
     normalize_result_row,
+    normalize_search_text,
     safe_int,
+)
+
+from app import client
+from app.db import (
+    get_org_view,
+    list_stored_orgs,
+    read_championships_from_store,
+    read_event_sessions_from_store,
+    read_events_from_store,
+    read_org_refresh_state,
+    read_results_from_store,
+    scan_track_records_from_synced_store,
+)
+from app.tasks import MAX_ORG_EVENTS
+from app.utils import (
+    extract_event_datetime,
+    format_datetime_display,
+    parse_date_to_comparison,
 )
 
 
@@ -87,7 +89,7 @@ def index():
 
         event_view = dict(event)
         event_view["_display_date"] = format_datetime_display(e_date_str, include_time=False) or "N/A"
-        sortable_events.append((e_date or datetime(1970, 1, 1).date(), event_view))
+        sortable_events.append((e_date or date(1970, 1, 1), event_view))
 
     sortable_events.sort(key=lambda item: item[0], reverse=True)
     events = [event for _, event in sortable_events]
