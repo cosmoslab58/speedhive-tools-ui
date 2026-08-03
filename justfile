@@ -1,6 +1,6 @@
 # Install virtual environment and dependencies (including test/lint tools)
 install:
-    python -m venv venv
+    python3 -m venv venv
     ./venv/bin/pip install --upgrade pip
     # Both pinned. Unpinned, CI linted against whatever ruff shipped that
     # week: 0.15 enabled 59 rules, 0.16 enabled 413, and a green build
