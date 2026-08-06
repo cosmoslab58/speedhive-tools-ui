@@ -3,6 +3,13 @@ name: Deploy
 on:
   push:
     branches: [main]
+  # Manual re-run. A push that never produces a run -- an Actions outage, a
+  # missed webhook -- otherwise leaves main sitting undeployed with nothing to
+  # say so: the commit is on main, both working trees look clean, and prod is
+  # quietly stale. Without this the only recourse is hand-deploying on bodhi.
+  # Safe from any ref: the job deploys the host checkout's main regardless of
+  # what this is dispatched from.
+  workflow_dispatch:
 
 env:
   PATH: /home/nathan/.pyenv/shims:/home/nathan/.pyenv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin

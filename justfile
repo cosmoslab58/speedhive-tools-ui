@@ -22,6 +22,20 @@ lint:
 run:
     ./venv/bin/flask run --host=0.0.0.0 --port=8854
 
+# Deploy from anywhere (ssh to bodhi and run deploy-local there). The manual
+# path when CI can't do it -- an Actions outage, a missed webhook.
+deploy:
+    ssh bodhi.lab 'cd ~/projects/speedhive-tools-ui && just deploy-local'
+
+# Rebuild + restart the compose stack. Run on bodhi (CI calls this).
+deploy-local:
+    docker compose up -d --build
+
+# Drop build cache and dangling images (CI calls this after deploying)
+prune:
+    docker builder prune -f
+    docker image prune -f
+
 # Clean cache directories
 clean:
     find . -type d -name "__pycache__" -exec rm -r {} +
