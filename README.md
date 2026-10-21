@@ -39,7 +39,7 @@ Sign in with the site password, add an organization by its Speedhive ID (the num
 
 Stats views recalculate automatically in a background task after every sync that changes data. The automatic pass covers the primary (default-filter) views; any extra filter combination you explore refreshes on demand from its own page, and combos untouched for 45 days are pruned during a full recalculation.
 
-**Track Records** — scans synced announcer text for lap-record callouts and proposes candidates for human review. Approved records join a curated list (with full edit history per record); rejected ones are remembered so they aren't re-proposed. Parsing is either a built-in matcher or AI-assisted via Google Gemini. Optional email notifications (via Resend) fire when new candidates appear. A public, CORS-enabled JSON feed of the curated list is available for embedding.
+**Track Records** — scans synced announcer text for lap-record callouts and proposes candidates for human review. Approved records join a curated list (with full edit history per record); rejected ones are remembered so they aren't re-proposed. Parsing is either a built-in matcher or AI-assisted via Anthropic Claude (`claude-haiku-5-5` by default). Optional email notifications (via Resend) fire when new candidates appear. A public, CORS-enabled JSON feed of the curated list is available for embedding.
 
 **Settings > Data** — sync controls with live progress, one-click stats recalculation, record rescan, portable NDJSON ZIP backups (create/restore/download), curated-record import/export, and org deletion.
 
@@ -72,7 +72,7 @@ Environment variables (loaded from `.env` at the repo root):
 | `SYNC_SECRET` | Optional shared secret for the notify endpoint | unset (open) |
 | `TRACK_RECORDS_STALE_HOURS` | Cache age before the CI endpoint re-syncs | `20` |
 
-Per-organization settings (parser engine, Gemini key/model, minimum laps, email notification config) are edited in **Settings > General** and stored in `data/orgs/<org_id>/settings.json`. They resolve through `speedhive.settings` in the submodule — the same mechanism the CLI uses — with per-org overrides winning over global environment defaults (per-org env vars use a `NAME_<org_id>` suffix pattern). Email/notification settings are UI-only; the library never sends email.
+Per-organization settings (parser engine, Anthropic API key / Claude model, minimum laps, email notification config) are edited in **Settings > General** and stored in `data/orgs/<org_id>/settings.json`. They resolve through `speedhive.settings` in the submodule — the same mechanism the CLI uses — with per-org overrides winning over global environment defaults (per-org env vars use a `NAME_<org_id>` suffix pattern). Email/notification settings are UI-only; the library never sends email.
 
 ## Architecture
 

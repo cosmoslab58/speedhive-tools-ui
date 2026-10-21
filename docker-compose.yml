@@ -19,6 +19,9 @@ services:
       - SPEEDHIVE_UI_PASSWORD=${SPEEDHIVE_UI_PASSWORD}
       # event-count cap applied to every sync (incremental and full); value lives in .env
       - SPEEDHIVE_MAX_ORG_EVENTS=${SPEEDHIVE_MAX_ORG_EVENTS}
+      # shared Anthropic key for AI-assisted record parsing; an org's own key
+      # in its settings.json still wins. Optional, value lives in .env
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
     ports:
       - "8854:8854"
     volumes:

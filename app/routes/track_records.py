@@ -8,6 +8,7 @@ from flask import Response, jsonify, redirect, render_template, request, url_for
 from speedhive.exporters.export_curated_track_records import (
     export_curated_track_records_ndjson,
 )
+from speedhive.llm import DEFAULT_MODEL
 from speedhive.settings import (
     get_org_env_var,
     get_org_env_var_override,
@@ -456,8 +457,8 @@ def _read_org_settings(org_id_int):
         "RESEND_API_KEY": _get_setting_info("RESEND_API_KEY", org_id_int, is_secret=True),
         "NOTIFICATION_FROM_EMAIL": _get_setting_info("NOTIFICATION_FROM_EMAIL", org_id_int),
         "NOTIFICATION_TO_EMAILS": _get_setting_info("NOTIFICATION_TO_EMAILS", org_id_int),
-        "GEMINI_API_KEY": _get_setting_info("GEMINI_API_KEY", org_id_int, is_secret=True),
-        "GEMINI_MODEL": _get_setting_info("GEMINI_MODEL", org_id_int),
+        "ANTHROPIC_API_KEY": _get_setting_info("ANTHROPIC_API_KEY", org_id_int, is_secret=True),
+        "ANTHROPIC_MODEL": _get_setting_info("ANTHROPIC_MODEL", org_id_int, default_fallback=DEFAULT_MODEL),
     }
 
     notif_data = {
@@ -487,8 +488,8 @@ def org_track_records_settings(org_id):
         to_emails_raw = request.form.get("to_emails", "").strip()
         to_emails = [email.strip() for email in to_emails_raw.split(",") if email.strip()]
 
-        gemini_api_key = request.form.get("gemini_api_key", "").strip() or None
-        gemini_model = request.form.get("gemini_model", "").strip() or None
+        anthropic_api_key = request.form.get("anthropic_api_key", "").strip() or None
+        anthropic_model = request.form.get("anthropic_model", "").strip() or None
 
         alias_map_json_str = request.form.get("alias_map_json", "").strip()
         parser_engine = "llm" if request.form.get("parser_engine") == "llm" else "regex"
@@ -528,8 +529,8 @@ def org_track_records_settings(org_id):
             ("RESEND_API_KEY", resend_api_key),
             ("NOTIFICATION_FROM_EMAIL", from_email),
             ("NOTIFICATION_TO_EMAILS", ",".join(to_emails) if to_emails else None),
-            ("GEMINI_API_KEY", gemini_api_key),
-            ("GEMINI_MODEL", gemini_model),
+            ("ANTHROPIC_API_KEY", anthropic_api_key),
+            ("ANTHROPIC_MODEL", anthropic_model),
         ]:
             if val:
                 if val.startswith("••••"):

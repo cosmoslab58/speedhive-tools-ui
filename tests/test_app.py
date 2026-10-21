@@ -306,10 +306,11 @@ def test_settings_page_overrides_and_fallback(client, monkeypatch):
     resp = client.get(f"/org/{org_id}/settings")
     assert resp.status_code == 200
     assert b"General Settings" in resp.data
+    assert b"anthropic_api_key" in resp.data and b"gemini" not in resp.data.lower()
 
     # Set a global environment variable for fallback testing
     monkeypatch.setenv("RESEND_API_KEY", "re_global_key")
-    monkeypatch.setenv("GEMINI_MODEL", "gemini-2.5-flash")
+    monkeypatch.setenv("ANTHROPIC_MODEL", "claude-haiku-5-5")
 
     # Before override, should resolve to global or None
     assert get_org_env_var("RESEND_API_KEY", org_id) == "re_global_key"
@@ -322,8 +323,8 @@ def test_settings_page_overrides_and_fallback(client, monkeypatch):
         "resend_api_key": "re_org_key_777",
         "from_email": "org@domain.com",
         "to_emails": "recipient@domain.com",
-        "gemini_api_key": "AIza-org-key",
-        "gemini_model": "gemini-2.5-pro",
+        "anthropic_api_key": "sk-ant-org-key",
+        "anthropic_model": "claude-sonnet-5-5",
         "alias_map_json": '{"aliases": {}, "always_review": []}',
         "parser_engine": "llm"
     }
@@ -336,7 +337,8 @@ def test_settings_page_overrides_and_fallback(client, monkeypatch):
     with open(config_file) as f:
         config = jsonlib.load(f)
     assert config["overrides"]["RESEND_API_KEY"] == "re_org_key_777"
-    assert config["overrides"]["GEMINI_MODEL"] == "gemini-2.5-pro"
+    assert config["overrides"]["ANTHROPIC_MODEL"] == "claude-sonnet-5-5"
+    assert config["overrides"]["ANTHROPIC_API_KEY"] == "sk-ant-org-key"
 
     # Check effective settings
     assert get_org_env_var("RESEND_API_KEY", org_id) == "re_org_key_777"
@@ -348,7 +350,7 @@ def test_settings_page_overrides_and_fallback(client, monkeypatch):
 
     # 3. Revert override (clear fields)
     post_data["resend_api_key"] = ""
-    post_data["gemini_model"] = ""
+    post_data["anthropic_model"] = ""
     resp = client.post(f"/org/{org_id}/settings", data=post_data)
     assert resp.status_code == 200
 
@@ -356,12 +358,12 @@ def test_settings_page_overrides_and_fallback(client, monkeypatch):
     with open(config_file) as f:
         config = jsonlib.load(f)
     assert "RESEND_API_KEY" not in config.get("overrides", {})
-    assert "GEMINI_MODEL" not in config.get("overrides", {})
+    assert "ANTHROPIC_MODEL" not in config.get("overrides", {})
 
     # Resolves to global/fallback again
     assert get_org_env_var("RESEND_API_KEY", org_id) == "re_global_key"
     assert get_org_env_var_override("RESEND_API_KEY", org_id) is None
-    assert get_org_env_var("GEMINI_MODEL", org_id) == "gemini-2.5-flash"
+    assert get_org_env_var("ANTHROPIC_MODEL", org_id) == "claude-haiku-5-5"
 
 
 def test_auto_notify_sends_email_for_pending_candidates(monkeypatch):

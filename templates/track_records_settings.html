@@ -47,7 +47,7 @@
                             <label for="parser_engine" class="form-label fw-semibold">Reading method</label>
                             <select class="form-select form-control-custom" id="parser_engine" name="parser_engine">
                                 <option value="regex" {% if parsing_config.engine != 'llm' %}selected{% endif %}>Standard (built-in)</option>
-                                <option value="llm" {% if parsing_config.engine == 'llm' %}selected{% endif %}>AI-assisted (Google Gemini)</option>
+                                <option value="llm" {% if parsing_config.engine == 'llm' %}selected{% endif %}>AI-assisted (Anthropic Claude)</option>
                             </select>
                             <span class="text-muted small">Announcements the reader is unsure about (an ambiguous class name, a low-confidence extraction) are filed to the Rejected tab instead of the review queue &mdash; restore them from there if that's wrong.</span>
                         </div>
@@ -55,14 +55,14 @@
                         <hr class="border-secondary opacity-25">
 
                         <div class="mb-3">
-                            <label for="gemini_api_key" class="form-label fw-semibold">Gemini API key</label>
-                            <input type="text" class="form-control form-control-custom" id="gemini_api_key" name="gemini_api_key" value="{{ env_settings.GEMINI_API_KEY.display_override or '' }}" placeholder="AIza...">
-                            <span class="text-muted small">Only needed for AI-assisted reading. Get a key at aistudio.google.com.</span>
+                            <label for="anthropic_api_key" class="form-label fw-semibold">Anthropic API key</label>
+                            <input type="text" class="form-control form-control-custom" id="anthropic_api_key" name="anthropic_api_key" value="{{ env_settings.ANTHROPIC_API_KEY.display_override or '' }}" placeholder="sk-ant-...">
+                            <span class="text-muted small">Only needed for AI-assisted reading. Leave blank to use the server's ANTHROPIC_API_KEY. Get a key at platform.claude.com.</span>
                         </div>
 
                         <div class="mb-3">
-                            <label for="gemini_model" class="form-label fw-semibold">Gemini model</label>
-                            <input type="text" class="form-control form-control-custom" id="gemini_model" name="gemini_model" value="{{ env_settings.GEMINI_MODEL.override or '' }}" placeholder="gemini-2.5-flash">
+                            <label for="anthropic_model" class="form-label fw-semibold">Claude model</label>
+                            <input type="text" class="form-control form-control-custom" id="anthropic_model" name="anthropic_model" value="{{ env_settings.ANTHROPIC_MODEL.override or '' }}" placeholder="claude-haiku-5-5">
                             <span class="text-muted small">Leave blank to use the default model.</span>
                         </div>
                     </div>
