@@ -4,12 +4,21 @@ import threading
 from datetime import datetime
 from pathlib import Path
 
-from flask import Response, jsonify, redirect, render_template, request, url_for
+from flask import (
+    Response,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 from speedhive.exporters.export_curated_track_records import (
     export_curated_track_records_ndjson,
 )
 from speedhive.llm import DEFAULT_MODEL
 from speedhive.settings import (
+    get_bulk_parser_for_org,
     get_org_env_var,
     get_org_env_var_override,
     get_org_env_var_with_source,
@@ -20,7 +29,7 @@ from speedhive.workflows.track_records.import_curated import (
 )
 
 from app import client, storage
-from app.db import get_org_view
+from app.db import get_org_view, list_stored_orgs
 from app.notifications import _send_resend_notification
 from app.tasks import (
     TRACK_RECORDS_ROOT,
@@ -48,11 +57,19 @@ def _track_records_candidate_identity(candidate):
     )
 
 
+def _is_stored_org(org_id_int):
+    return any(o["id"] == org_id_int for o in list_stored_orgs())
+
+
 def org_track_records_status(org_id):
     try:
         org_id_int = int(org_id)
     except ValueError:
         return jsonify({"error": "Invalid org_id"}), 400
+    # Public endpoint: answer only for orgs this install already tracks, so an
+    # anonymous caller can't make it look up arbitrary orgs on Speedhive.
+    if not _is_stored_org(org_id_int):
+        return jsonify({"error": "Unknown organization"}), 404
     status = track_records.get_cache_status(org_id_int, storage, TRACK_RECORDS_ROOT, client=client)
     running_task = _get_running_track_records_task_for_org(org_id_int)
     status["task_running"] = running_task is not None
@@ -66,9 +83,15 @@ def org_track_records_sync(org_id):
     except ValueError:
         return jsonify({"error": "Invalid org_id"}), 400
 
+    if not _is_stored_org(org_id_int):
+        return jsonify({"error": "Unknown organization"}), 404
+
+    # Anonymous callers (GitLab CI) get the freshness-checked sync only; a
+    # forced or full crawl is an operator action and needs a login.
     body = request.get_json(silent=True) or {}
-    force = request.args.get("force") in ("1", "true", "True") or bool(body.get("force"))
-    full = request.args.get("full") in ("1", "true", "True") or bool(body.get("full"))
+    operator = bool(session.get("authenticated"))
+    force = operator and (request.args.get("force") in ("1", "true", "True") or bool(body.get("force")))
+    full = operator and (request.args.get("full") in ("1", "true", "True") or bool(body.get("full")))
 
     running_task = _get_running_track_records_task_for_org(org_id_int)
     if running_task:
@@ -401,7 +424,9 @@ def org_track_records_rejected_restore(org_id):
         request.form.get("date"),
     )
 
-    result = track_records.restore_rejected_record(org_id_int, storage, TRACK_RECORDS_ROOT, identity)
+    result = track_records.restore_rejected_record(
+        org_id_int, storage, TRACK_RECORDS_ROOT, identity, bulk_parser=get_bulk_parser_for_org(org_id_int)
+    )
     if not result["found"]:
         return redirect(url_for("org_track_records_rejected", org_id=org_id_int, error="Record not found (already restored?)."))
 
@@ -651,6 +676,12 @@ def org_track_records_json(org_id):
     except ValueError:
         return jsonify({"error": "Invalid org_id"}), 400
     p = track_records.paths_for_org(TRACK_RECORDS_ROOT, org_id_int)
+    # A missing file is an error, not an empty list: an empty 200 would blank
+    # the consuming site, which falls back to its own copy only on a failure.
+    if not p["curated"].exists() and not p["curated"].with_suffix(".json").exists():
+        resp = jsonify({"error": "No curated track records for this organization"})
+        resp.headers["Access-Control-Allow-Origin"] = "*"
+        return resp, 404
     curated = track_records.load_curated(p)
     body = json.dumps(curated, ensure_ascii=False, indent=2)
     resp = Response(body, mimetype="application/json")

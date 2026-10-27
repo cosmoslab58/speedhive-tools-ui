@@ -16,6 +16,7 @@
 
     <div class="col-12">
         <form method="POST" action="{{ url_for('org_track_records_settings', org_id=org_id) }}">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="row g-4">
                 <!-- Stats Card -->
                 <div class="col-lg-6">
@@ -56,7 +57,7 @@
 
                         <div class="mb-3">
                             <label for="anthropic_api_key" class="form-label fw-semibold">Anthropic API key</label>
-                            <input type="text" class="form-control form-control-custom" id="anthropic_api_key" name="anthropic_api_key" value="{{ env_settings.ANTHROPIC_API_KEY.display_override or '' }}" placeholder="sk-ant-...">
+                            <input type="password" autocomplete="off" class="form-control form-control-custom" id="anthropic_api_key" name="anthropic_api_key" value="{{ env_settings.ANTHROPIC_API_KEY.display_override or '' }}" placeholder="sk-ant-...">
                             <span class="text-muted small">Only needed for AI-assisted reading. Leave blank to use the server's ANTHROPIC_API_KEY. Get a key at platform.claude.com.</span>
                         </div>
 
@@ -113,7 +114,7 @@
 
                         <div class="mb-3">
                             <label for="resend_api_key" class="form-label fw-semibold">Resend API key</label>
-                            <input type="text" class="form-control form-control-custom" id="resend_api_key" name="resend_api_key" value="{{ env_settings.RESEND_API_KEY.display_override or '' }}" placeholder="re_...">
+                            <input type="password" autocomplete="off" class="form-control form-control-custom" id="resend_api_key" name="resend_api_key" value="{{ env_settings.RESEND_API_KEY.display_override or '' }}" placeholder="re_...">
                             <span class="text-muted small">Emails are sent through Resend &mdash; paste your API key from resend.com.</span>
                         </div>
 
@@ -132,7 +133,7 @@
 
                 <div class="col-12">
                     <div class="glass-card d-flex justify-content-end gap-2">
-                        <a class="btn-custom-outline py-2" href="{{ url_for('org_track_records_curated', org_id=org_id) }}">Cancel</a>
+                        <a class="btn-custom-outline py-2" href="{{ url_for('org_track_records_settings', org_id=org_id) }}">Cancel</a>
                         <button type="submit" class="btn-custom py-2 px-4">
                             <i class="fa-solid fa-save me-1"></i> Save settings
                         </button>

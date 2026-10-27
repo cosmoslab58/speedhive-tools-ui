@@ -19,16 +19,16 @@
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h3 class="h5 fw-bold mb-0">Fastest Laps</h3>
                 {% if records %}
-                    <a href="/track-records/export.json?org_id={{ org.id }}&amp;classification={{ classification or '' }}&amp;driver_filter={{ driver_filter or '' }}&amp;start_date={{ start_date or '' }}&amp;end_date={{ end_date or '' }}&amp;limit_events={{ limit_events if limit_events is not none else 0 }}" class="text-info text-decoration-none small">Export JSON</a>
+                    <a href="/track-records/export.json?org_id={{ org.id }}&amp;classification={{ (classification or '')|urlencode }}&amp;driver_filter={{ (driver_filter or '')|urlencode }}&amp;start_date={{ (start_date or '')|urlencode }}&amp;end_date={{ (end_date or '')|urlencode }}&amp;limit_events={{ limit_events if limit_events is not none else 0 }}" class="text-info text-decoration-none small">Export JSON</a>
                 {% endif %}
             </div>
 
             <form method="get" action="{{ url_for('lap_records', org_id=org.id) }}" class="d-flex flex-column gap-2 mb-4">
                 <!-- Row 1: class filter, dates, scan limit, buttons -->
                 <div class="d-flex flex-wrap gap-2 align-items-center">
-                    <input type="text" id="classification" name="classification" class="form-control form-control-custom w-auto py-1 px-2" placeholder="Class filter (e.g. Rotax)" value="{{ classification or '' }}">
+                    <input type="text" id="classification" name="classification" class="form-control form-control-custom w-auto py-1 px-2" placeholder="Class filter (e.g. Rotax)" aria-label="Class filter" value="{{ classification or '' }}">
 
-                    <div class="d-flex align-items-center gap-1">
+                    <div class="d-flex flex-wrap align-items-center gap-1">
                         <label for="start_date" class="text-muted small fw-semibold text-nowrap">Dates:</label>
                         <input type="date" id="start_date" name="start_date" class="form-control form-control-custom py-1 w-auto" value="{{ start_date or '' }}">
                         <span class="text-muted small">to</span>
@@ -81,7 +81,7 @@
                             {% for r in records %}
                                 <tr>
                                     <td class="text-secondary small">{{ r.timestamp or 'N/A' }}</td>
-                                    <td class="fw-semibold">{% if r.driver %}<a href="/org/{{ org.id }}/stats/driver/{{ r.driver }}" class="driver-link">{{ r.driver }}</a>{% endif %}</td>
+                                    <td class="fw-semibold">{% if r.driver %}<a href="{{ url_for('driver_stats_breakdown', org_id=org.id, driver_name=r.driver) }}" class="driver-link">{{ r.driver }}</a>{% endif %}</td>
                                     <td class="text-secondary small">{{ r.classification }}</td>
                                     <td class="text-info fw-bold">{{ r.lap_time }}</td>
                                     <td>
@@ -94,13 +94,13 @@
                 </div>
             {% elif records_ready %}
                 <div class="text-center py-4 text-muted">
-                    <i class="fa-solid fa-stopwatch fs-2 mb-2 d-block opacity-40"></i>
+                    <i class="fa-solid fa-stopwatch fs-2 mb-2 d-block opacity-50"></i>
                     No lap records match these filters.
                 </div>
             {% else %}
                 <div class="text-center py-4 text-muted">
-                    <i class="fa-solid fa-stopwatch fs-2 mb-2 d-block opacity-40"></i>
-                    No lap records yet. <a href="/org/{{ org.id }}/operations" class="text-info">Sync this organization's data</a> first (Settings &gt; Data).
+                    <i class="fa-solid fa-stopwatch fs-2 mb-2 d-block opacity-50"></i>
+                    No lap records yet. Sync this organization's data first under <a href="{{ url_for('org_operations', org_id=org.id) }}" class="text-info">Settings &rsaquo; Data &amp; Backups</a>.
                 </div>
             {% endif %}
         </div>

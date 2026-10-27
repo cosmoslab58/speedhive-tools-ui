@@ -17,6 +17,9 @@ services:
       - SPEEDHIVE_DATA_DIR=/app/data
       # site login password; value lives in the gitignored .env file
       - SPEEDHIVE_UI_PASSWORD=${SPEEDHIVE_UI_PASSWORD}
+      # signs the login session cookie; the app refuses to start without it.
+      # Value lives in .env (a random 64-hex string)
+      - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:?set FLASK_SECRET_KEY in .env}
       # event-count cap applied to every sync (incremental and full); value lives in .env
       - SPEEDHIVE_MAX_ORG_EVENTS=${SPEEDHIVE_MAX_ORG_EVENTS}
       # shared Anthropic key for AI-assisted record parsing; an org's own key

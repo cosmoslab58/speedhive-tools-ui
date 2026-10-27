@@ -18,8 +18,9 @@
         {% endif %}
 
         <form method="post" action="/organizations/add" class="d-flex gap-2 mb-3">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="number" name="org_id" value="{{ org_id_input }}" required autofocus
-                   class="form-control form-control-custom" placeholder="e.g. 30476">
+                   class="form-control form-control-custom" placeholder="e.g. 30476" aria-label="Speedhive organization ID">
             <button type="submit" class="btn-custom-outline flex-shrink-0">Look up organization</button>
         </form>
 
@@ -32,7 +33,7 @@
             Open organization
         </a>
         <p class="mt-2 mb-0" style="color: var(--text-muted); font-size: 0.75rem;">
-            The organization starts empty — sync its data under Settings &gt; Data
+            The organization starts empty — sync its data under <a href="{{ url_for('org_operations', org_id=lookup.id) }}" class="text-info">Settings &rsaquo; Data &amp; Backups</a>
             to pull in events; it then appears in the organization dropdown.
         </p>
         {% endif %}

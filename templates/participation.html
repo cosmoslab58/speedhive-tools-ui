@@ -14,10 +14,10 @@
     {% if not manifest_exists %}
         <div class="col-12">
             <div class="glass-card text-center py-5">
-                <i class="fa-solid fa-cloud-arrow-down fs-2 mb-2 d-block opacity-40 text-muted"></i>
+                <i class="fa-solid fa-cloud-arrow-down fs-2 mb-2 d-block opacity-50 text-muted"></i>
                 <h3 class="h5 fw-bold mb-2">No Synced Data Yet</h3>
                 <p class="text-muted small mb-4">Sync this organization's results from Speedhive first, then come back to see participation trends.</p>
-                <a class="btn-custom" href="/org/{{ org.id }}/operations">Go to Settings &gt; Data</a>
+                <a class="btn-custom" href="{{ url_for('org_operations', org_id=org.id) }}">Go to Settings &rsaquo; Data &amp; Backups</a>
             </div>
         </div>
     {% else %}
@@ -59,10 +59,11 @@
         {% if not has_persisted_stats %}
             <div class="col-12">
                 <div class="glass-card text-center py-5">
-                    <i class="fa-solid fa-users fs-2 mb-3 d-block opacity-40"></i>
+                    <i class="fa-solid fa-users fs-2 mb-3 d-block opacity-50"></i>
                     <h3 class="h5 fw-bold mb-2">Stats Not Calculated Yet</h3>
                     <p class="text-muted small mb-4">Count distinct racers per year across all classes for the selected filters. This runs once and is saved for next time.</p>
                     <form action="/org/{{ org.id }}/stats/class-pace/generate" method="post" class="d-inline" id="recalc-participation-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="redirect_to" value="org_participation">
                         {% for st in session_types %}
                             <input type="hidden" name="session_types" value="{{ st }}">
@@ -137,7 +138,7 @@
                         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-1">
                             <h3 class="h5 fw-bold mb-0"><i class="fa-solid fa-layer-group text-info"></i> <span id="class-participation-title">Average Annual Participants by Class</span></h3>
                             <div class="d-flex align-items-center gap-2">
-                                <select id="class-select" class="form-select form-select-sm bg-surface border border-secondary border-opacity-20 text-white" style="width: auto; min-width: 180px; font-size: 0.85rem;">
+                                <select id="class-select" aria-label="View a specific class" class="form-select form-select-sm bg-surface border border-secondary border-opacity-25 text-white" style="width: auto; min-width: 180px; font-size: 0.85rem;">
                                     <option value="">-- View Specific Class --</option>
                                     {% for cls in participation_by_class.classes %}
                                         <option value="{{ cls }}">{{ cls }}</option>
@@ -191,7 +192,7 @@
 
 {% block extra_js %}
 {% if (participation_data and participation_data.years) or (participation_by_class and participation_by_class.classes) %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 {% endif %}
 {% if participation_data and participation_data.years %}
 <script>
@@ -199,6 +200,7 @@
         const participationData = {{ participation_data | tojson }};
         const rootStyles = window.getComputedStyle(document.documentElement);
         const brand = rootStyles.getPropertyValue("--brand").trim() || "#06b6d4";
+        const muted = rootStyles.getPropertyValue("--text-muted").trim() || "#9ca3af";
 
         const ctx = document.getElementById("participationChart");
         if (!ctx) return;
@@ -232,12 +234,12 @@
                 scales: {
                     x: {
                         grid: { display: false },
-                        ticks: { color: "#64748b" }
+                        ticks: { color: muted }
                     },
                     y: {
                         beginAtZero: true,
                         grid: { color: "rgba(255, 255, 255, 0.03)" },
-                        ticks: { color: "#64748b", precision: 0 }
+                        ticks: { color: muted, precision: 0 }
                     }
                 }
             }
@@ -251,6 +253,7 @@
         const byClassData = {{ participation_by_class | tojson }};
         const rootStyles = window.getComputedStyle(document.documentElement);
         const brand = rootStyles.getPropertyValue("--brand").trim() || "#06b6d4";
+        const muted = rootStyles.getPropertyValue("--text-muted").trim() || "#9ca3af";
 
         const ctx = document.getElementById("classParticipationChart");
         if (!ctx) return;
@@ -317,12 +320,12 @@
                 scales: {
                     x: {
                         grid: { display: false },
-                        ticks: { color: "#64748b" }
+                        ticks: { color: muted }
                     },
                     y: {
                         beginAtZero: true,
                         grid: { color: "rgba(255, 255, 255, 0.03)" },
-                        ticks: { color: "#64748b", precision: 0 }
+                        ticks: { color: muted, precision: 0 }
                     }
                 }
             }

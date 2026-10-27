@@ -256,11 +256,18 @@
             box-shadow: none;
         }
 
+        /* Positioned so an absolutely positioned child (a .visually-hidden
+           header label) is clipped by the scroll box instead of widening the page. */
+        .table-responsive,
+        .table-custom-container {
+            position: relative;
+        }
+
         .table-custom-container {
             border: 1px solid var(--border);
             border-radius: var(--radius-lg);
             background: var(--bg-surface);
-            overflow: hidden;
+            overflow-x: auto;
         }
 
         .table-custom {
@@ -385,6 +392,19 @@
             background: var(--brand) !important;
         }
 
+        .bg-brand-soft {
+            background: var(--brand-soft) !important;
+        }
+
+        @media (min-width: 768px) {
+            .w-md-auto {
+                width: auto !important;
+            }
+            .border-md-end {
+                border-right: 1px solid var(--border) !important;
+            }
+        }
+
         .border-brand {
             border-color: var(--brand) !important;
         }
@@ -425,6 +445,11 @@
             cursor: pointer;
             user-select: none;
             white-space: nowrap;
+        }
+
+        .table-custom th[data-sort-key]:focus-visible {
+            outline: 2px solid var(--brand);
+            outline-offset: -2px;
         }
 
         .table-custom th[data-sort-key] .sort-arrow {
@@ -521,10 +546,6 @@
         }
 
         /* Mobile Responsiveness styling updates */
-        .table-custom-container {
-            overflow-x: auto;
-        }
-
         @media (max-width: 768px) {
             .navbar-nav {
                 width: 100%;
@@ -552,27 +573,43 @@
                 gap: 1rem !important;
                 flex-wrap: wrap;
             }
-            .d-flex.align-items-center.gap-3 {
+            .d-flex.align-items-center.gap-3:not(.org-nav) {
                 flex-wrap: wrap;
                 width: 100%;
             }
-            .d-flex.align-items-center.gap-3 > form,
-            .d-flex.align-items-center.gap-3 > div {
+            .d-flex.align-items-center.gap-3:not(.org-nav) > form,
+            .d-flex.align-items-center.gap-3:not(.org-nav) > div:not(.nav-scroll) {
                 width: 100%;
             }
-            .d-flex.align-items-center.gap-3 select {
+            .d-flex.align-items-center.gap-3:not(.org-nav) select {
                 width: 100% !important;
             }
-            .d-flex.align-items-center.gap-3 form {
+            .d-flex.align-items-center.gap-3:not(.org-nav) form {
                 flex-wrap: wrap;
                 gap: 0.5rem !important;
             }
-            .d-flex.align-items-center.gap-3 label {
+            .d-flex.align-items-center.gap-3:not(.org-nav) label {
                 width: 100%;
             }
             .btn-custom, .btn-custom-outline {
                 width: 100%;
                 justify-content: center;
+            }
+            /* Org nav + sub-navs: one horizontally scrollable row, not stacked full-width buttons */
+            .nav-scroll {
+                display: flex;
+                flex-wrap: nowrap !important;
+                overflow-x: auto;
+                gap: 0.5rem !important;
+                width: 100%;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: thin;
+            }
+            .nav-scroll > .btn-custom,
+            .nav-scroll > .btn-custom-outline {
+                flex: 0 0 auto;
+                width: auto;
+                white-space: nowrap;
             }
             #filter-form {
                 width: 100%;
@@ -592,6 +629,26 @@
     </style>
 
     {% block extra_css %}{% endblock %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <script>
+        // Same-origin POSTs made with fetch() carry the session's CSRF token,
+        // just as every POST form carries it in a hidden field.
+        (function () {
+            const token = document.querySelector('meta[name="csrf-token"]').content;
+            const originalFetch = window.fetch;
+            window.fetch = function (input, init) {
+                init = init || {};
+                const method = (init.method || (input instanceof Request ? input.method : "GET")).toUpperCase();
+                const url = new URL(input instanceof Request ? input.url : input, window.location.href);
+                if (method !== "GET" && method !== "HEAD" && url.origin === window.location.origin) {
+                    const headers = new Headers(init.headers || (input instanceof Request ? input.headers : undefined));
+                    headers.set("X-CSRFToken", token);
+                    init = Object.assign({}, init, { headers: headers });
+                }
+                return originalFetch.call(this, input, init);
+            };
+        })();
+    </script>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg custom-navbar sticky-top">
@@ -599,14 +656,14 @@
             <a class="navbar-brand-custom" href="/">
                 Speedhive-tools
             </a>
-            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
-                <i class="fa-solid fa-bars"></i>
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
+                <i class="fa-solid fa-bars" aria-hidden="true"></i>
             </button>
             <div class="collapse navbar-collapse justify-content-end" id="mainNav">
                 <ul class="navbar-nav align-items-center gap-2">
                     {% if authenticated %}
                     <li class="nav-item me-3">
-                        <select class="form-select form-control-custom" style="font-size: 0.8rem; min-width: 200px; padding: 0.25rem 2rem 0.25rem 0.5rem;" onchange="navigateToOrganization(this.value)">
+                        <select class="form-select form-control-custom" aria-label="Switch organization" style="font-size: 0.8rem; min-width: 200px; padding: 0.25rem 2rem 0.25rem 0.5rem;" onchange="navigateToOrganization(this.value)">
                             <option value="">-- Organization --</option>
                             {% for o in org_list %}
                                 <option value="{{ o.id }}" {% if o.id|string == global_org_id|string %}selected{% endif %}>{{ o.name }}</option>
@@ -623,6 +680,7 @@
                     {% if authenticated %}
                     <li class="nav-item">
                         <form method="post" action="/logout" class="m-0">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="nav-link nav-link-custom border-0 bg-transparent">
                                 <i class="fa-solid fa-right-from-bracket me-1"></i>Logout
                             </button>
@@ -650,7 +708,7 @@
         </div>
     </footer>
 
-    <div id="page-loading-overlay" class="page-loading-overlay" aria-hidden="true">
+    <div id="page-loading-overlay" class="page-loading-overlay" role="status" aria-live="polite" aria-hidden="true">
         <div class="page-loading-card">
             <div class="page-loading-spinner" aria-hidden="true"></div>
             <div id="page-loading-title" class="page-loading-title">Loading...</div>
@@ -730,14 +788,23 @@
             if (!headers.length) return;
             const tbody = table.querySelector('tbody');
 
-            headers.forEach(function (th, colIndex) {
+            headers.forEach(function (th) {
+                th.setAttribute('tabindex', '0');
+                if (!th.hasAttribute('aria-sort')) th.setAttribute('aria-sort', 'none');
+                th.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        th.click();
+                    }
+                });
                 th.addEventListener('click', function () {
                     const wasSorted = th.classList.contains('sorted');
                     const defaultDir = th.dataset.sortDir || 'desc';
                     const dir = wasSorted ? (th.dataset.currentDir === 'asc' ? 'desc' : 'asc') : defaultDir;
-                    headers.forEach(function (h) { h.classList.remove('sorted'); delete h.dataset.currentDir; });
+                    headers.forEach(function (h) { h.classList.remove('sorted'); delete h.dataset.currentDir; h.setAttribute('aria-sort', 'none'); });
                     th.classList.add('sorted');
                     th.dataset.currentDir = dir;
+                    th.setAttribute('aria-sort', dir === 'asc' ? 'ascending' : 'descending');
 
                     const idx = Array.from(th.parentNode.children).indexOf(th);
                     const rows = Array.from(tbody.querySelectorAll('tr')).filter(function (r) { return r.children.length > idx; });

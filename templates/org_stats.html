@@ -43,20 +43,21 @@
         <!-- No synced data yet -->
         <div class="col-12">
             <div class="glass-card text-center py-5">
-                <i class="fa-solid fa-cloud-arrow-down fs-2 mb-2 d-block opacity-40 text-muted"></i>
+                <i class="fa-solid fa-cloud-arrow-down fs-2 mb-2 d-block opacity-50 text-muted"></i>
                 <h3 class="h5 fw-bold mb-2">No Synced Data Yet</h3>
                 <p class="text-muted small mb-4">Sync this organization's results from Speedhive first, then come back to see driver stats.</p>
-                <a class="btn-custom" href="/org/{{ org.id }}/operations">Go to Settings &gt; Data</a>
+                <a class="btn-custom" href="{{ url_for('org_operations', org_id=org.id) }}">Go to Settings &rsaquo; Data &amp; Backups</a>
             </div>
         </div>
     {% elif not has_persisted_stats %}
         <!-- Data synced, stats not calculated for this filter combination -->
         <div class="col-12">
             <div class="glass-card text-center py-5">
-                <i class="fa-solid fa-calculator fs-2 mb-2 d-block opacity-40 text-muted"></i>
+                <i class="fa-solid fa-calculator fs-2 mb-2 d-block opacity-50 text-muted"></i>
                 <h3 class="h5 fw-bold mb-2">Stats Not Calculated Yet</h3>
                 <p class="text-muted small mb-4">Calculate stats for the selected filters ({{ session_types|join(', ') }}{% if ignore_outliers %}, ignoring outlier laps{% endif %}). This runs once and is saved for next time.</p>
                 <form action="/org/{{ org.id }}/stats/generate" method="post" class="d-inline" id="recalc-stats-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     {% for st in session_types %}
                         <input type="hidden" name="session_types" value="{{ st }}">
                     {% endfor %}
@@ -137,7 +138,7 @@
                         <h3 class="h5 fw-bold mb-0">All Drivers</h3>
                         <span class="text-muted small">Click a column to sort, or a driver's name for their full report. Consistency applies to the session filters above; starts, wins, and podiums count races only.</span>
                     </div>
-                    <input type="text" id="driver-table-search" class="form-control form-control-custom py-1 px-2" style="max-width: 260px;" placeholder="Search drivers...">
+                    <input type="text" id="driver-table-search" class="form-control form-control-custom py-1 px-2" style="max-width: 260px;" placeholder="Search drivers..." aria-label="Search drivers">
                 </div>
 
                 <div class="table-custom-container table-scroll">
@@ -164,6 +165,7 @@
                     <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
                         <span class="small text-warning"><i class="fa-solid fa-triangle-exclamation me-1"></i>Data has been synced since this view was calculated.</span>
                         <form action="/org/{{ org.id }}/stats/generate" method="post" class="d-inline" id="update-view-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             {% for st in session_types %}
                                 <input type="hidden" name="session_types" value="{{ st }}">
                             {% endfor %}
@@ -292,7 +294,20 @@
                 return div.innerHTML;
             }
 
+            function syncAriaSort() {
+                document.querySelectorAll('#drivers-table th[data-sort-key]').forEach(h => {
+                    h.setAttribute('aria-sort', h.dataset.sortKey === sortKey ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none');
+                });
+            }
+
             document.querySelectorAll('#drivers-table th[data-sort-key]').forEach(th => {
+                th.setAttribute('tabindex', '0');
+                th.addEventListener('keydown', e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        th.click();
+                    }
+                });
                 th.addEventListener('click', () => {
                     const key = th.dataset.sortKey;
                     if (sortKey === key) {
@@ -304,9 +319,11 @@
                     }
                     document.querySelectorAll('#drivers-table th[data-sort-key]').forEach(h => h.classList.remove('sorted'));
                     th.classList.add('sorted');
+                    syncAriaSort();
                     renderTable();
                 });
             });
+            syncAriaSort();
 
             document.getElementById('driver-table-search').addEventListener('input', function () {
                 searchTerm = this.value.trim();

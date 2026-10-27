@@ -18,6 +18,8 @@ def setup_test_env():
         os.environ["SPEEDHIVE_DB_PATH"] = str(db_path)
         os.environ["SPEEDHIVE_DATA_DIR"] = tmpdir
         os.environ["SPEEDHIVE_UI_PASSWORD"] = "test-password"
+        os.environ["FLASK_SECRET_KEY"] = "test-secret-key"
+        os.environ["SPEEDHIVE_INSECURE_COOKIES"] = "1"  # the test client speaks plain http
         yield
         # Cleanup is handled by TemporaryDirectory
 
@@ -26,6 +28,7 @@ def client():
     """A logged-in client (the whole UI sits behind the site password)."""
     from app import UI_PASSWORD, app
     app.config["TESTING"] = True
+    app.config["CSRF_ENABLED"] = False  # covered by its own tests below
     with app.test_client() as client:
         client.post("/login", data={"password": UI_PASSWORD})
         yield client
@@ -34,6 +37,7 @@ def client():
 def anon_client():
     from app import app
     app.config["TESTING"] = True
+    app.config["CSRF_ENABLED"] = False
     with app.test_client() as client:
         yield client
 
@@ -45,10 +49,14 @@ def test_login_required_for_ui(anon_client):
 
 def test_public_track_records_feed_stays_open(anon_client):
     """The curated feed and CI sync endpoints must not require a login."""
+    # Not login redirects: an org with no curated file is a 404 (so the
+    # consuming site falls back to its own copy), and the sync status only
+    # answers for orgs this install tracks.
     resp = anon_client.get("/org/123/track-records/curated.json")
-    assert resp.status_code == 200
+    assert resp.status_code == 404
+    assert resp.headers["Access-Control-Allow-Origin"] == "*"
     resp = anon_client.get("/org/123/track-records/update/status")
-    assert resp.status_code in (200, 502)  # may fail upstream, but not a login redirect
+    assert resp.status_code == 404
 
 def test_login_wrong_password(anon_client):
     resp = anon_client.post("/login", data={"password": "nope"})
@@ -803,3 +811,62 @@ def test_generate_all_stats_creates_driver_directory_key(client):
             break
         time.sleep(0.1)
     assert found, "generate-all should create the driver_directory stats view"
+
+
+def test_csrf_token_required_on_login_gated_posts():
+    from app import UI_PASSWORD, app
+    app.config["TESTING"] = True
+    app.config["CSRF_ENABLED"] = True
+    try:
+        with app.test_client() as c:
+            c.post("/login", data={"password": UI_PASSWORD})
+            assert c.post("/logout").status_code == 400  # no token at all
+            with c.session_transaction() as sess:
+                sess["_csrf_token"] = "the-token"
+            assert c.post("/logout", data={"csrf_token": "wrong"}).status_code == 400
+            assert c.post("/logout", data={"csrf_token": "the-token"}).status_code == 302
+
+            # fetch() calls send it as a header instead
+            c.post("/login", data={"password": UI_PASSWORD})
+            with c.session_transaction() as sess:
+                sess["_csrf_token"] = "the-token"
+            assert c.post("/logout", headers={"X-CSRFToken": "the-token"}).status_code == 302
+    finally:
+        app.config["CSRF_ENABLED"] = False
+
+
+def test_public_sync_endpoint_exempt_from_csrf(anon_client):
+    from app import app
+    app.config["CSRF_ENABLED"] = True
+    try:
+        # unknown org: refused by the allow-list, not by CSRF
+        assert anon_client.post("/org/123/track-records/update").status_code == 404
+    finally:
+        app.config["CSRF_ENABLED"] = False
+
+
+def test_login_next_rejects_offsite_redirects(anon_client):
+    from app import UI_PASSWORD
+    for evil in ("//evil.com", "/\\evil.com", "/\t/evil.com", "https://evil.com"):
+        anon_client.post("/logout")
+        resp = anon_client.post("/login", data={"password": UI_PASSWORD, "next": evil})
+        assert resp.status_code == 302
+        assert "evil.com" not in resp.headers["Location"], evil
+    anon_client.post("/logout")
+    resp = anon_client.post("/login", data={"password": UI_PASSWORD, "next": "/org/1"})
+    assert resp.headers["Location"].endswith("/org/1")
+
+
+def test_backup_keys_cannot_escape_the_history_dir():
+    from app.db import _resolve_dump_dir_for_org
+    for bad in ("..", "../..", "a/b", ".", "x/../.."):
+        assert _resolve_dump_dir_for_org(1, bad) is None, bad
+    assert _resolve_dump_dir_for_org(1, "20260101T000000Z") is not None
+
+
+def test_stopping_a_finished_task_is_refused(client):
+    from app.tasks import _new_task, _update_task
+    task_id = _new_task(42, "incremental")
+    _update_task(task_id, status="done")
+    resp = client.post(f"/refresh/stop/{task_id}")
+    assert resp.status_code == 409

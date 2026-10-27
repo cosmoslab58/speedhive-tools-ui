@@ -14,19 +14,20 @@
     {% if not manifest_exists %}
         <div class="col-12">
             <div class="glass-card text-center py-5">
-                <i class="fa-solid fa-cloud-arrow-down fs-2 mb-2 d-block opacity-40 text-muted"></i>
+                <i class="fa-solid fa-cloud-arrow-down fs-2 mb-2 d-block opacity-50 text-muted"></i>
                 <h3 class="h5 fw-bold mb-2">No Synced Data Yet</h3>
                 <p class="text-muted small mb-4">Sync this organization's results from Speedhive first, then come back to see who wins the most.</p>
-                <a class="btn-custom" href="/org/{{ org.id }}/operations">Go to Settings &gt; Data</a>
+                <a class="btn-custom" href="{{ url_for('org_operations', org_id=org.id) }}">Go to Settings &rsaquo; Data &amp; Backups</a>
             </div>
         </div>
     {% elif not has_persisted_stats %}
         <div class="col-12">
             <div class="glass-card text-center py-5">
-                <i class="fa-solid fa-trophy fs-2 mb-3 d-block opacity-40"></i>
+                <i class="fa-solid fa-trophy fs-2 mb-3 d-block opacity-50"></i>
                 <h3 class="h5 fw-bold mb-2">Stats Not Calculated Yet</h3>
                 <p class="text-muted small mb-4">Tally class-position wins and podiums across every synced race. This runs once and is saved for next time.</p>
                 <form action="/org/{{ org.id }}/stats/wins-podiums/generate" method="post" class="d-inline" id="recalc-wins-podiums-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn-custom" id="recalc-wins-podiums-btn">
                         <i class="fa-solid fa-play me-1"></i>Calculate stats
                     </button>
@@ -58,7 +59,7 @@
                         <h3 class="h5 fw-bold mb-0">Wins &amp; Podiums</h3>
                         <span class="text-muted small">Click a column to sort — sorted by wins to start.</span>
                     </div>
-                    <input type="text" id="driver-search-input" class="form-control form-control-custom py-1 px-2" style="max-width: 260px;" placeholder="Search drivers...">
+                    <input type="text" id="driver-search-input" class="form-control form-control-custom py-1 px-2" style="max-width: 260px;" placeholder="Search drivers..." aria-label="Search drivers">
                 </div>
                 {% if most_wins %}
                     <div class="table-custom-container table-scroll">
@@ -76,7 +77,7 @@
                             <tbody id="wins-table-body">
                                 {% for r in most_wins %}
                                     <tr data-driver-name="{{ r.name|lower }}">
-                                        <td class="fw-semibold"><a href="/org/{{ org.id }}/stats/driver/{{ r.name }}?session_types=race" class="driver-link">{{ r.name }}</a></td>
+                                        <td class="fw-semibold"><a href="{{ url_for('driver_stats_breakdown', org_id=org.id, driver_name=r.name, session_types='race') }}" class="driver-link">{{ r.name }}</a></td>
                                         <td>{{ r.starts }}</td>
                                         <td>{{ r.wins }}</td>
                                         <td>{{ r.win_rate_display }}</td>
@@ -89,7 +90,7 @@
                     </div>
                 {% else %}
                     <div class="text-center py-4 text-muted">
-                        <i class="fa-solid fa-trophy fs-2 mb-2 d-block opacity-40"></i>
+                        <i class="fa-solid fa-trophy fs-2 mb-2 d-block opacity-50"></i>
                         No drivers with at least 3 race starts yet.
                     </div>
                 {% endif %}
@@ -105,6 +106,7 @@
                 <div class="d-flex flex-wrap align-items-center gap-2">
                     <span class="small text-warning"><i class="fa-solid fa-triangle-exclamation me-1"></i>Data has been synced since this view was calculated.</span>
                     <form action="/org/{{ org.id }}/stats/wins-podiums/generate" method="post" class="d-inline" id="update-view-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn-custom-outline py-1 px-2 fs-7" id="update-view-btn"><i class="fa-solid fa-arrows-rotate me-1"></i>Update this view</button>
                     </form>
                 </div>

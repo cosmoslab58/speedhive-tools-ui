@@ -6,3 +6,5 @@ __pycache__
 README.md
 .venv
 venv
+# runtime data (SQLite cache, per-org settings with API keys) is a volume, never image content
+data

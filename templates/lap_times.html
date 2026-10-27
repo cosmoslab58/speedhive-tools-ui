@@ -28,7 +28,7 @@
                 <h1 class="h2 fw-bold mb-1">{{ driver_name }}</h1>
                 <p class="text-muted mb-2">Lap-by-lap timing for this session, with consistency metrics.</p>
                 {% if global_org_id %}
-                    <a href="/org/{{ global_org_id }}/stats/driver/{{ driver_name }}" class="btn-custom-outline py-1 px-3 fs-7"><i class="fa-solid fa-id-card me-1"></i>View driver stats</a>
+                    <a href="{{ url_for('driver_stats_breakdown', org_id=global_org_id, driver_name=driver_name) }}" class="btn-custom-outline py-1 px-3 fs-7"><i class="fa-solid fa-id-card me-1"></i>View driver stats</a>
                 {% endif %}
             </div>
         </div>
@@ -75,7 +75,7 @@
                         </thead>
                         <tbody>
                             {% for lap in laps %}
-                                <tr {% if lap.is_outlier %}class="opacity-50 text-muted" title="Outlier ignored from stats"{% endif %}>
+                                <tr {% if lap.is_outlier %}class="text-muted" title="Outlier ignored from stats"{% endif %}>
                                     <td class="text-secondary fw-semibold">#{{ lap.lapNumber or lap.lap or loop.index }} {% if lap.is_outlier %}(Outlier){% endif %}</td>
                                     <td class="fw-semibold text-info {% if lap.is_outlier %}text-decoration-line-through text-muted{% endif %}">{{ lap.lapTime or lap.lap_time or 'N/A' }}</td>
                                     <td class="text-secondary">{{ lap.speed or '—' }}</td>
@@ -109,13 +109,20 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
     document.addEventListener("DOMContentLoaded", function () {
-        const labels = [];
-        const data = [];
+        {% set lap_labels = [] %}
+        {% set lap_seconds = [] %}
+        {% for lap in laps %}
+            {% set _ = lap_labels.append("Lap " ~ (lap.lapNumber or lap.lap or loop.index)) %}
+            {% set _ = lap_seconds.append(parse_time_value(lap.lapTime or lap.lap_time) or none) %}
+        {% endfor %}
+        const labels = {{ lap_labels|tojson }};
+        const data = {{ lap_seconds|tojson }};
         const rootStyles = window.getComputedStyle(document.documentElement);
         const brand = rootStyles.getPropertyValue("--brand").trim() || "#06b6d4";
+        const muted = rootStyles.getPropertyValue("--text-muted").trim() || "#9ca3af";
 
         // Matches speedhive.utils.lap_analysis.format_seconds's M:SS.mmm
         // convention used everywhere else in the app.
@@ -129,16 +136,6 @@
             return secs.toFixed(3);
         }
 
-        {% for lap in laps %}
-            labels.push("Lap {{ lap.lapNumber or lap.lap or loop.index }}");
-            {% set seconds = parse_time_value(lap.lapTime or lap.lap_time) %}
-            {% if seconds %}
-                data.push({{ seconds }});
-            {% else %}
-                data.push(null);
-            {% endif %}
-        {% endfor %}
-        
         const ctx = document.getElementById("lapChartCanvas");
         if (!ctx) return;
         
@@ -193,12 +190,12 @@
                 scales: {
                     x: {
                         grid: { color: "rgba(255, 255, 255, 0.03)" },
-                        ticks: { color: "#64748b" }
+                        ticks: { color: muted }
                     },
                     y: {
                         grid: { color: "rgba(255, 255, 255, 0.03)" },
                         ticks: {
-                            color: "#64748b",
+                            color: muted,
                             callback: function(value) {
                                 return formatSecondsAsTime(value);
                             }

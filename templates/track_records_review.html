@@ -11,7 +11,7 @@
         <div>
             <h1 class="h4 fw-bold mb-1">Review Queue</h1>
             <span class="text-muted small">
-                {% if generated_at %}Candidates generated {{ generated_at }}{% else %}No candidates generated yet — run a scan from the Track Records tab{% endif %}
+                {% if generated_at %}Candidates generated {{ generated_at }}{% else %}No candidates generated yet — run a scan from <a href="{{ url_for('org_operations', org_id=org.id) }}" class="text-info">Settings &rsaquo; Data &amp; Backups</a>{% endif %}
             </span>
         </div>
         <div class="d-flex align-items-center gap-3">
@@ -19,6 +19,7 @@
             {% if candidates|length > 1 %}
             <form method="POST" action="{{ url_for('org_track_records_review_approve_all', org_id=org_id) }}"
                   onsubmit="return confirm('Approve all {{ candidates|length }} candidates as-is?');">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn-custom py-1 px-3">
                     <i class="fa-solid fa-check-double"></i> Approve All ({{ candidates|length }})
                 </button>
@@ -51,34 +52,35 @@
             {% if c.current %}
             <div class="p-2 rounded bg-surface border border-secondary border-opacity-10 small mb-3">
                 <div class="text-muted mb-1">For reference — current fastest curated record for this class</div>
-                <div><strong>{{ c.current.classAbbreviation }}</strong> — {{ c.current.lapTime }} — {% if c.current.driverName %}<a href="/org/{{ org.id }}/stats/driver/{{ c.current.driverName }}" class="driver-link">{{ c.current.driverName }}</a>{% else %}—{% endif %} — {{ c.current.marque or '—' }} — {{ c.current.date }}</div>
+                <div><strong>{{ c.current.classAbbreviation }}</strong> — {{ c.current.lapTime }} — {% if c.current.driverName %}<a href="{{ url_for('driver_stats_breakdown', org_id=org.id, driver_name=c.current.driverName) }}" class="driver-link">{{ c.current.driverName }}</a>{% else %}—{% endif %} — {{ c.current.marque or '—' }} — {{ c.current.date }}</div>
             </div>
             {% endif %}
 
             <form method="POST" action="{{ url_for('org_track_records_review_apply', org_id=org_id) }}" class="row g-2 align-items-end">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="orig_classAbbreviation" value="{{ c.proposed.classAbbreviation }}">
                 <input type="hidden" name="orig_lapTime" value="{{ c.proposed.lapTime }}">
                 <input type="hidden" name="orig_driverName" value="{{ c.proposed.driverName }}">
                 <input type="hidden" name="orig_date" value="{{ c.proposed.date }}">
                 <div class="col-6 col-md-3">
-                    <label class="form-label small text-muted mb-1">Class</label>
-                    <input class="form-control form-control-custom form-control-sm" name="classAbbreviation" value="{{ c.proposed.classAbbreviation or '' }}" required>
+                    <label for="review-classAbbreviation-{{ loop.index }}" class="form-label small text-muted mb-1">Class</label>
+                    <input id="review-classAbbreviation-{{ loop.index }}" class="form-control form-control-custom form-control-sm" name="classAbbreviation" value="{{ c.proposed.classAbbreviation or '' }}" required>
                 </div>
                 <div class="col-6 col-md-2">
-                    <label class="form-label small text-muted mb-1">Lap Time</label>
-                    <input class="form-control form-control-custom form-control-sm" name="lapTime" value="{{ c.proposed.lapTime or '' }}" required>
+                    <label for="review-lapTime-{{ loop.index }}" class="form-label small text-muted mb-1">Lap Time</label>
+                    <input id="review-lapTime-{{ loop.index }}" class="form-control form-control-custom form-control-sm" name="lapTime" value="{{ c.proposed.lapTime or '' }}" required>
                 </div>
                 <div class="col-6 col-md-3">
-                    <label class="form-label small text-muted mb-1">Driver</label>
-                    <input class="form-control form-control-custom form-control-sm" name="driverName" value="{{ c.proposed.driverName or '' }}">
+                    <label for="review-driverName-{{ loop.index }}" class="form-label small text-muted mb-1">Driver</label>
+                    <input id="review-driverName-{{ loop.index }}" class="form-control form-control-custom form-control-sm" name="driverName" value="{{ c.proposed.driverName or '' }}">
                 </div>
                 <div class="col-6 col-md-2">
-                    <label class="form-label small text-muted mb-1">Car</label>
-                    <input class="form-control form-control-custom form-control-sm" name="marque" value="{{ c.proposed.marque or '' }}">
+                    <label for="review-marque-{{ loop.index }}" class="form-label small text-muted mb-1">Car</label>
+                    <input id="review-marque-{{ loop.index }}" class="form-control form-control-custom form-control-sm" name="marque" value="{{ c.proposed.marque or '' }}">
                 </div>
                 <div class="col-6 col-md-2">
-                    <label class="form-label small text-muted mb-1">Date</label>
-                    <input class="form-control form-control-custom form-control-sm" name="date" value="{{ c.proposed.date or '' }}" required>
+                    <label for="review-date-{{ loop.index }}" class="form-label small text-muted mb-1">Date</label>
+                    <input id="review-date-{{ loop.index }}" class="form-control form-control-custom form-control-sm" name="date" value="{{ c.proposed.date or '' }}" required>
                 </div>
                 <div class="col-12 d-flex gap-2 mt-2">
                     <button type="submit" class="btn-custom py-1 px-3">
@@ -88,6 +90,7 @@
             </form>
 
             <form method="POST" action="{{ url_for('org_track_records_review_reject', org_id=org_id) }}" class="mt-2">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="orig_classAbbreviation" value="{{ c.proposed.classAbbreviation }}">
                 <input type="hidden" name="orig_lapTime" value="{{ c.proposed.lapTime }}">
                 <input type="hidden" name="orig_driverName" value="{{ c.proposed.driverName }}">

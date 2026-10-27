@@ -14,29 +14,30 @@
             <div class="text-muted small mb-3">Add a curated record directly, without going through the scan/review workflow.</div>
 
             <form method="POST" action="{{ url_for('org_track_records_curated_add', org_id=org.id) }}" class="row g-2 align-items-end">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="col-6 col-md-3">
-                    <label class="form-label small text-muted mb-1">Class</label>
-                    <input class="form-control form-control-custom form-control-sm" name="classAbbreviation" required>
+                    <label for="add-classAbbreviation" class="form-label small text-muted mb-1">Class</label>
+                    <input id="add-classAbbreviation" class="form-control form-control-custom form-control-sm" name="classAbbreviation" required>
                 </div>
                 <div class="col-6 col-md-2">
-                    <label class="form-label small text-muted mb-1">Lap Time</label>
-                    <input class="form-control form-control-custom form-control-sm" name="lapTime" placeholder="1:23.456" required>
+                    <label for="add-lapTime" class="form-label small text-muted mb-1">Lap Time</label>
+                    <input id="add-lapTime" class="form-control form-control-custom form-control-sm" name="lapTime" placeholder="1:23.456" required>
                 </div>
                 <div class="col-6 col-md-3">
-                    <label class="form-label small text-muted mb-1">Driver</label>
-                    <input class="form-control form-control-custom form-control-sm" name="driverName">
+                    <label for="add-driverName" class="form-label small text-muted mb-1">Driver</label>
+                    <input id="add-driverName" class="form-control form-control-custom form-control-sm" name="driverName">
                 </div>
                 <div class="col-6 col-md-2">
-                    <label class="form-label small text-muted mb-1">Car</label>
-                    <input class="form-control form-control-custom form-control-sm" name="marque">
+                    <label for="add-marque" class="form-label small text-muted mb-1">Car</label>
+                    <input id="add-marque" class="form-control form-control-custom form-control-sm" name="marque">
                 </div>
                 <div class="col-6 col-md-2">
-                    <label class="form-label small text-muted mb-1">Date</label>
-                    <input type="date" class="form-control form-control-custom form-control-sm" name="date" required>
+                    <label for="add-date" class="form-label small text-muted mb-1">Date</label>
+                    <input type="date" id="add-date" class="form-control form-control-custom form-control-sm" name="date" required>
                 </div>
                 <div class="col-12 d-flex gap-2 mt-2">
                     <button type="submit" class="btn-custom py-1 px-3">
-                        <i class="fa-solid fa-plus"></i> Add Record
+                        <i class="fa-solid fa-plus" aria-hidden="true"></i> Add Record
                     </button>
                 </div>
             </form>
@@ -51,7 +52,7 @@
                     <h3 class="h5 fw-bold mb-1">Curated Track Records</h3>
                     <span class="text-muted small">
                         {% if curated_date %}As of {{ curated_date }} &bull; {% endif %}
-                        <a href="{{ url_for('org_operations', org_id=org.id) }}" class="text-info">Rescan, import & export in Data</a>
+                        <a href="{{ url_for('org_operations', org_id=org.id) }}" class="text-info">Rescan, import &amp; export in Settings &rsaquo; Data &amp; Backups</a>
                     </span>
                 </div>
                 <span class="text-muted small">{{ records|length }} record(s)</span>
@@ -67,7 +68,7 @@
                             <th>Car</th>
                             <th class="text-nowrap">Date</th>
                             <th class="text-nowrap">Source</th>
-                            <th></th>
+                            <th><span class="visually-hidden">Actions</span></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -75,7 +76,7 @@
                         <tr>
                             <td class="text-nowrap">{{ r.classAbbreviation }}</td>
                             <td class="text-nowrap">{{ r.lapTime }}</td>
-                            <td>{% if r.driverName %}<a href="/org/{{ org.id }}/stats/driver/{{ r.driverName }}" class="driver-link">{{ r.driverName }}</a>{% endif %}</td>
+                            <td>{% if r.driverName %}<a href="{{ url_for('driver_stats_breakdown', org_id=org.id, driver_name=r.driverName) }}" class="driver-link">{{ r.driverName }}</a>{% endif %}</td>
                             <td>{{ r.marque or '—' }}</td>
                             <td class="text-nowrap">{{ r.date }}</td>
                             <td class="text-nowrap">
@@ -93,17 +94,18 @@
                                 {% endif %}
                             </td>
                             <td class="text-end text-nowrap">
-                                <button class="btn-custom-outline py-1 px-2" style="font-size: 0.75rem;" type="button" data-bs-toggle="collapse" data-bs-target="#edit-row-{{ loop.index }}">
-                                    <i class="fa-solid fa-pen"></i>
+                                <button class="btn-custom-outline py-1 px-2" style="font-size: 0.75rem;" type="button" data-bs-toggle="collapse" data-bs-target="#edit-row-{{ loop.index }}" aria-controls="edit-row-{{ loop.index }}" aria-expanded="false" aria-label="Edit record">
+                                    <i class="fa-solid fa-pen" aria-hidden="true"></i>
                                 </button>
                                 <form method="POST" action="{{ url_for('org_track_records_curated_delete', org_id=org.id) }}" class="d-inline"
                                       onsubmit="return confirm({% if r.source == 'manual' %}'Permanently delete this manual record? This cannot be undone.'{% else %}'Remove this record? It will be blocked from reappearing on future scans.'{% endif %});">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="classAbbreviation" value="{{ r.classAbbreviation }}">
                                     <input type="hidden" name="lapTime" value="{{ r.lapTime }}">
                                     <input type="hidden" name="driverName" value="{{ r.driverName }}">
                                     <input type="hidden" name="date" value="{{ r.date }}">
-                                    <button class="btn-custom-outline border-danger text-danger py-1 px-2" style="font-size: 0.75rem;">
-                                        <i class="fa-solid fa-trash"></i>
+                                    <button type="submit" class="btn-custom-outline border-danger text-danger py-1 px-2" style="font-size: 0.75rem;" aria-label="Delete record">
+                                        <i class="fa-solid fa-trash" aria-hidden="true"></i>
                                     </button>
                                 </form>
                             </td>
@@ -113,33 +115,34 @@
                                 <div class="collapse" id="edit-row-{{ loop.index }}">
                                     <div class="p-3 bg-surface-2 border-top border-bottom border-secondary border-opacity-10">
                                         <form method="POST" action="{{ url_for('org_track_records_curated_edit', org_id=org.id) }}" class="row g-2 align-items-end">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <input type="hidden" name="orig_classAbbreviation" value="{{ r.classAbbreviation }}">
                                             <input type="hidden" name="orig_lapTime" value="{{ r.lapTime }}">
                                             <input type="hidden" name="orig_driverName" value="{{ r.driverName }}">
                                             <input type="hidden" name="orig_date" value="{{ r.date }}">
                                             <div class="col-6 col-md-2">
-                                                <label class="form-label small text-muted mb-1">Class</label>
-                                                <input class="form-control form-control-custom form-control-sm" name="classAbbreviation" value="{{ r.classAbbreviation }}" required>
+                                                <label for="edit-classAbbreviation-{{ loop.index }}" class="form-label small text-muted mb-1">Class</label>
+                                                <input id="edit-classAbbreviation-{{ loop.index }}" class="form-control form-control-custom form-control-sm" name="classAbbreviation" value="{{ r.classAbbreviation }}" required>
                                             </div>
                                             <div class="col-6 col-md-2">
-                                                <label class="form-label small text-muted mb-1">Lap Time</label>
-                                                <input class="form-control form-control-custom form-control-sm" name="lapTime" value="{{ r.lapTime }}" required>
+                                                <label for="edit-lapTime-{{ loop.index }}" class="form-label small text-muted mb-1">Lap Time</label>
+                                                <input id="edit-lapTime-{{ loop.index }}" class="form-control form-control-custom form-control-sm" name="lapTime" value="{{ r.lapTime }}" required>
                                             </div>
                                             <div class="col-6 col-md-3">
-                                                <label class="form-label small text-muted mb-1">Driver</label>
-                                                <input class="form-control form-control-custom form-control-sm" name="driverName" value="{{ r.driverName or '' }}">
+                                                <label for="edit-driverName-{{ loop.index }}" class="form-label small text-muted mb-1">Driver</label>
+                                                <input id="edit-driverName-{{ loop.index }}" class="form-control form-control-custom form-control-sm" name="driverName" value="{{ r.driverName or '' }}">
                                             </div>
                                             <div class="col-6 col-md-2">
-                                                <label class="form-label small text-muted mb-1">Car</label>
-                                                <input class="form-control form-control-custom form-control-sm" name="marque" value="{{ r.marque or '' }}">
+                                                <label for="edit-marque-{{ loop.index }}" class="form-label small text-muted mb-1">Car</label>
+                                                <input id="edit-marque-{{ loop.index }}" class="form-control form-control-custom form-control-sm" name="marque" value="{{ r.marque or '' }}">
                                             </div>
                                             <div class="col-6 col-md-2">
-                                                <label class="form-label small text-muted mb-1">Date</label>
-                                                <input type="date" class="form-control form-control-custom form-control-sm" name="date" value="{{ r.date }}" required>
+                                                <label for="edit-date-{{ loop.index }}" class="form-label small text-muted mb-1">Date</label>
+                                                <input type="date" id="edit-date-{{ loop.index }}" class="form-control form-control-custom form-control-sm" name="date" value="{{ r.date }}" required>
                                             </div>
                                             <div class="col-12 col-md-1 d-flex">
-                                                <button type="submit" class="btn-custom py-1 px-3 w-100">
-                                                    <i class="fa-solid fa-check"></i>
+                                                <button type="submit" class="btn-custom py-1 px-3 w-100" aria-label="Save changes">
+                                                    <i class="fa-solid fa-check" aria-hidden="true"></i>
                                                 </button>
                                             </div>
                                         </form>

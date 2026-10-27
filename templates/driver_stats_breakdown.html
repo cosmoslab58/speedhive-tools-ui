@@ -114,7 +114,7 @@
         <div class="glass-card">
             <!-- Identity -->
             <div>
-                <span class="text-brand small fw-bold text-uppercase tracking-wider">Driver Profile</span>
+                <span class="text-brand small fw-bold text-uppercase">Driver Profile</span>
                 <h2 class="h3 fw-bold mb-0 text-white">{{ driver_name }}</h2>
                 {% if aliases|length > 1 %}
                     <p class="small text-muted mt-1 mb-0">
@@ -256,14 +256,14 @@
                             <tbody>
                                 {% for cls, cstats in class_stats.items() %}
                                     <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                                        <td class="fw-bold text-light py-2.5">{{ cls }}</td>
-                                        <td class="text-center text-white py-2.5">{{ cstats.starts }}</td>
-                                        <td class="text-center text-success fw-semibold py-2.5">{% if cstats.wins > 0 %}{{ cstats.wins }}{% else %}-{% endif %}</td>
-                                        <td class="text-center text-warning fw-semibold py-2.5">{% if cstats.podiums > 0 %}{{ cstats.podiums }}{% else %}-{% endif %}</td>
-                                        <td class="text-center text-success fw-semibold py-2.5">{{ cstats.win_rate }}</td>
-                                        <td class="text-center text-warning fw-semibold py-2.5">{{ cstats.podium_rate }}</td>
-                                        <td class="text-end text-brand fw-mono py-2.5">{{ cstats.best_lap_display }}</td>
-                                        <td class="text-end fw-mono py-2.5 {% if cstats.holds_record %}text-brand fw-bold{% else %}text-muted{% endif %}">
+                                        <td class="fw-bold text-light py-2">{{ cls }}</td>
+                                        <td class="text-center text-white py-2">{{ cstats.starts }}</td>
+                                        <td class="text-center text-success fw-semibold py-2">{% if cstats.wins > 0 %}{{ cstats.wins }}{% else %}-{% endif %}</td>
+                                        <td class="text-center text-warning fw-semibold py-2">{% if cstats.podiums > 0 %}{{ cstats.podiums }}{% else %}-{% endif %}</td>
+                                        <td class="text-center text-success fw-semibold py-2">{{ cstats.win_rate }}</td>
+                                        <td class="text-center text-warning fw-semibold py-2">{{ cstats.podium_rate }}</td>
+                                        <td class="text-end text-brand fw-mono py-2">{{ cstats.best_lap_display }}</td>
+                                        <td class="text-end fw-mono py-2 {% if cstats.holds_record %}text-brand fw-bold{% else %}text-muted{% endif %}">
                                             {% if cstats.holds_record %}<i class="fa-solid fa-trophy me-1"></i>{% endif %}{{ cstats.record_gap_display or '—' }}
                                         </td>
                                     </tr>
@@ -287,7 +287,7 @@
                         <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 border-bottom border-secondary border-opacity-10 pb-3 mb-3">
                             <div>
                                 <div class="d-flex align-items-center gap-2 mb-1">
-                                    <span class="badge bg-brand bg-opacity-25 text-brand small px-2 py-1 fw-bold">{{ session.session_type }}</span>
+                                    <span class="badge bg-brand-soft text-brand small px-2 py-1 fw-bold">{{ session.session_type }}</span>
                                     <h4 class="h5 fw-bold mb-0 text-white">{{ session.session_name }}</h4>
                                 </div>
                                 <span class="text-muted small">{{ session.class_name }} &bull; {{ session.date_display }}</span>
@@ -371,7 +371,7 @@
                             <div class="row g-2">
                                 {% for lap in session.laps %}
                                     <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-                                        <div class="p-2 rounded text-center {% if lap.is_outlier %}bg-danger bg-opacity-10 border border-danger border-opacity-25 text-muted opacity-50{% elif lap.is_best %}bg-brand bg-opacity-10 border border-brand border-opacity-50{% else %}bg-surface border border-secondary border-opacity-10{% endif %}" {% if lap.is_outlier %}title="Outlier ignored from stats"{% endif %}>
+                                        <div class="p-2 rounded text-center {% if lap.is_outlier %}bg-danger bg-opacity-10 border border-danger border-opacity-25 text-muted{% elif lap.is_best %}bg-brand-soft border border-brand border-opacity-50{% else %}bg-surface border border-secondary border-opacity-10{% endif %}" {% if lap.is_outlier %}title="Outlier ignored from stats"{% endif %}>
                                             <span class="text-muted d-block" style="font-size: 0.75rem;">Lap {{ lap.number }}{% if lap.is_outlier %}<span class="d-none d-sm-inline"> (Outlier)</span>{% endif %}</span>
                                             <span class="fw-mono fw-semibold small {% if lap.is_outlier %}text-decoration-line-through text-muted{% elif lap.is_best %}text-brand{% else %}text-white{% endif %}">{{ lap.display }}</span>
                                         </div>

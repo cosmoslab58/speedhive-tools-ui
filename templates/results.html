@@ -69,7 +69,7 @@
                         {% if results %}
                             <div class="row g-2 mb-4 bg-surface-2 p-3 rounded border border-secondary border-opacity-10 align-items-center">
                                 <div class="col-md-5">
-                                    <input id="driverFilterInput" class="form-control form-control-custom w-100" placeholder="Filter driver name...">
+                                    <input id="driverFilterInput" class="form-control form-control-custom w-100" placeholder="Filter driver name..." aria-label="Filter by driver name">
                                 </div>
                                 <div class="col-md-7 text-secondary small">
                                     <i class="fa-solid fa-filter me-1"></i> Showing <span id="visibleRows" class="fw-semibold text-info">{{ results|length }}</span> of {{ results|length }} entries
@@ -93,7 +93,7 @@
                                         {% for r in results %}
                                             <tr class="result-row" data-driver="{{ (r.driver_name or '')|lower }}">
                                                 <td class="fw-bold text-info">P{{ r.position }}</td>
-                                                <td class="fw-semibold">{% if r.driver_name and global_org_id %}<a href="/org/{{ global_org_id }}/stats/driver/{{ r.driver_name }}" class="driver-link">{{ r.driver_name }}</a>{% else %}{{ r.driver_name }}{% endif %}</td>
+                                                <td class="fw-semibold">{% if r.driver_name and global_org_id %}<a href="{{ url_for('driver_stats_breakdown', org_id=global_org_id, driver_name=r.driver_name) }}" class="driver-link">{{ r.driver_name }}</a>{% else %}{{ r.driver_name }}{% endif %}</td>
                                                 <td class="text-secondary">{{ r.car_class or '—' }}</td>
                                                 <td>{{ r.total_time_display or '—' }}</td>
                                                 <td class="text-info">{{ r.best_lap_display or '—' }}</td>
@@ -112,7 +112,7 @@
                             </div>
                         {% else %}
                             <div class="text-center py-4 text-muted">
-                                <i class="fa-solid fa-user-slash fs-2 mb-2 d-block opacity-40"></i>
+                                <i class="fa-solid fa-user-slash fs-2 mb-2 d-block opacity-50"></i>
                                 No classification results found for this session.
                             </div>
                         {% endif %}
@@ -131,7 +131,7 @@
                             </div>
                         {% else %}
                             <div class="text-center py-4 text-muted">
-                                <i class="fa-solid fa-volume-mute fs-2 mb-2 d-block opacity-40"></i>
+                                <i class="fa-solid fa-volume-mute fs-2 mb-2 d-block opacity-50"></i>
                                 No announcements available for this session.
                             </div>
                         {% endif %}
@@ -175,7 +175,7 @@
                             </div>
                         {% else %}
                             <div class="text-center py-4 text-muted">
-                                <i class="fa-solid fa-chart-line fs-2 mb-2 d-block opacity-40"></i>
+                                <i class="fa-solid fa-chart-line fs-2 mb-2 d-block opacity-50"></i>
                                 No lap chart data available for this session.
                             </div>
                         {% endif %}

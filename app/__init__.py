@@ -1,9 +1,11 @@
+import hmac
 import json
 import os
+import secrets
 from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import Flask, redirect, request, session, url_for
+from flask import Flask, abort, current_app, redirect, request, session, url_for
 from speedhive.exporters.export_db_dump import export_db_dump  # noqa: F401
 from speedhive.storage import SpeedhiveStorage
 from speedhive.wrapper import SpeedhiveClient
@@ -39,6 +41,31 @@ PUBLIC_ENDPOINTS = {
 }
 
 
+CSRF_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+
+
+def csrf_token():
+    """The per-session token every login-gated form and fetch POST must echo."""
+    token = session.get("_csrf_token")
+    if not token:
+        token = session["_csrf_token"] = secrets.token_urlsafe(32)
+    return token
+
+
+def check_csrf():
+    # The public endpoints are machine-to-machine (GitLab CI) or the login form
+    # itself; everything else that changes state needs the session's token.
+    if request.method not in CSRF_METHODS or request.endpoint in PUBLIC_ENDPOINTS:
+        return None
+    if not current_app.config.get("CSRF_ENABLED", True):
+        return None
+    sent = request.form.get("csrf_token") or request.headers.get("X-CSRFToken") or ""
+    expected = session.get("_csrf_token") or ""
+    if not expected or not hmac.compare_digest(sent, expected):
+        abort(400, description="The form expired or did not come from this site. Reload the page and try again.")
+    return None
+
+
 def require_login():
     if request.endpoint is None or request.endpoint in PUBLIC_ENDPOINTS:
         return None
@@ -51,7 +78,15 @@ def require_login():
 def create_app() -> Flask:
     global storage, UI_PASSWORD
     app = Flask(__name__, template_folder="../templates", static_folder="../static")
-    app.secret_key = os.environ.get("FLASK_SECRET_KEY", "speedhive-tools-secret-key-34399")
+    # Signs the login session. There is deliberately no fallback: this repo is
+    # public, so any default here would let anyone mint a logged-in cookie.
+    app.secret_key = os.environ["FLASK_SECRET_KEY"]
+    app.config.update(
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE="Lax",
+        SESSION_COOKIE_SECURE=os.environ.get("SPEEDHIVE_INSECURE_COOKIES") != "1",
+    )
+    app.jinja_env.globals["csrf_token"] = csrf_token
     
     UI_PASSWORD = os.environ.get("SPEEDHIVE_UI_PASSWORD")
     storage = SpeedhiveStorage(DB_PATH)
@@ -123,6 +158,7 @@ def create_app() -> Flask:
         
     # Configure global request hook
     app.before_request(require_login)
+    app.before_request(check_csrf)
     
     # Register routes
     from app.routes.auth import register_routes as reg_auth

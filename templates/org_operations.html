@@ -88,6 +88,7 @@
                     <span class="text-muted small">Every stats page updates automatically after each sync &mdash; use this only if a stats page shows an "out of date" warning.</span>
                 </div>
                 <form action="/org/{{ org.id }}/stats/generate-all" method="post" id="recalc-all-stats-form" class="d-inline">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button class="btn-custom-outline" type="submit" id="recalc-all-stats-btn">
                         <span class="js-btn-label"><i class="fa-solid fa-calculator me-1"></i>Recalculate all stats</span>
                         <span class="js-btn-loading d-none"><i class="fa-solid fa-circle-notch fa-spin"></i> <span id="recalc-stats-phase">Recalculating...</span></span>
@@ -137,6 +138,7 @@
             <div class="text-muted small mb-2">Everything that's been synced: events, sessions, results, laps, and announcements.</div>
             <div class="d-flex flex-wrap gap-2 mb-3">
                 <form method="post" action="{{ url_for('save_local', org_id=org.id) }}" class="js-org-action-form d-inline" data-action-label="Creating backup...">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="max_events" value="25">
                     <button class="btn-custom-outline" type="submit">
                         <span class="js-btn-label"><i class="fa-solid fa-file-zipper me-1"></i>Create backup</span>
@@ -146,6 +148,7 @@
             </div>
 
             <form method="post" action="{{ url_for('upload_local_dump', org_id=org.id) }}" enctype="multipart/form-data" class="js-org-action-form" data-action-label="Restoring backup...">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="mb-2">
                     <label for="dumpFile" class="form-label small text-muted">Restore from a backup ZIP</label>
                     <input class="form-control form-control-custom form-control-sm" type="file" id="dumpFile" name="file" required accept=".zip">
@@ -170,10 +173,11 @@
                         <div class="text-muted" style="font-size: 0.75rem;">{{ dump.manifest.events_count }} events, {{ dump.manifest.sessions_count }} sessions, {{ dump.manifest.laps_records_count }} lap blocks</div>
                     </div>
                     <div class="d-flex flex-column gap-2 align-items-stretch">
-                        <a class="btn-custom text-white btn-sm text-nowrap" href="{{ dump.download_url }}">
+                        <a class="btn-custom btn-sm text-nowrap" href="{{ dump.download_url }}">
                             <i class="fa-solid fa-download me-1"></i>Download
                         </a>
                         <form method="post" action="{{ url_for('delete_local_dump', org_id=org.id, dump_key=dump.key) }}" onsubmit="return confirm('Delete this backup from disk? Downloaded copies are not affected.');">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button class="btn-custom-outline border-danger text-danger btn-sm w-100" type="submit">
                                 Delete
                             </button>
@@ -203,9 +207,10 @@
             <form method="POST" action="{{ url_for('org_track_records_import', org_id=org.id) }}"
                   enctype="multipart/form-data" class="d-flex flex-wrap align-items-center gap-2 mb-0"
                   onsubmit="return this.mode.value !== 'replace' || confirm('Replace ALL curated records with the file contents?');">
-                <input type="file" name="file" accept=".ndjson,.jsonl,application/x-ndjson" required
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="file" name="file" accept=".ndjson,.jsonl,application/x-ndjson" required aria-label="Curated records file (NDJSON)"
                        class="form-control form-control-custom form-control-sm" style="max-width: 280px;">
-                <select name="mode" class="form-select form-control-custom form-select-sm" style="max-width: 180px;">
+                <select name="mode" aria-label="Import mode" class="form-select form-control-custom form-select-sm" style="max-width: 180px;">
                     <option value="merge" selected>Merge (skip duplicates)</option>
                     <option value="replace">Replace all</option>
                 </select>
@@ -231,6 +236,7 @@
             <h3 class="h5 fw-bold mb-1 text-danger">Danger zone</h3>
             <div class="text-muted small mb-3">Removes this organization and all of its synced data from this install. Curated track records and settings files are kept. This cannot be undone &mdash; create a backup first if in doubt.</div>
             <form method="post" action="/org/{{ org.id }}/clear-cache" onsubmit="return confirm('Permanently delete all local data for this organization? This cannot be undone.');">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button class="btn-custom-outline border-danger text-danger" type="submit">
                     Delete local data
                 </button>
@@ -277,7 +283,7 @@
         const modeLabel    = document.getElementById("refresh-mode-label");
         const statusIcon   = document.getElementById("refresh-status-icon");
 
-        let currentTaskId = "{{ running_task_id or '' }}" || null;
+        let currentTaskId = {{ (running_task_id or none)|tojson }} || null;
         let pollInterval  = null;
         let isStopping    = false;
 
@@ -475,7 +481,14 @@
                     .then(function (task) {
                         if (recalcPhase) recalcPhase.textContent = task.phase || "Recalculating...";
                         if (recalcStatus && task.status === "running") {
-                            recalcStatus.innerHTML = '<span class="text-info small"><i class="fa-solid fa-circle-notch fa-spin me-1"></i>' + (task.phase || "Recalculating stats…") + '</span>';
+                            const span = document.createElement("span");
+                            span.className = "text-info small";
+                            const icon = document.createElement("i");
+                            icon.className = "fa-solid fa-circle-notch fa-spin me-1";
+                            icon.setAttribute("aria-hidden", "true");
+                            span.appendChild(icon);
+                            span.appendChild(document.createTextNode(task.phase || "Recalculating stats…"));
+                            recalcStatus.replaceChildren(span);
                         }
                         if (task.status !== "running") {
                             clearInterval(poll);
@@ -490,7 +503,7 @@
 
         {% if running_recalc_stats_task_id %}
         setRecalcBusy(true);
-        pollRecalcTask("{{ running_recalc_stats_task_id }}");
+        pollRecalcTask({{ running_recalc_stats_task_id|tojson }});
         {% endif %}
 
         document.getElementById("recalc-all-stats-form")?.addEventListener("submit", function () {
@@ -512,9 +525,17 @@
         function renderTrackRecordsStatus(status) {
             if (!trackRecordsStatus) return;
             const ageText = status.age_hours != null ? "last synced " + status.age_hours.toFixed(1) + "h ago" : "never scanned";
-            trackRecordsStatus.innerHTML =
-                '<span class="text-muted">Synced data: ' + ageText + '</span>' +
-                '<span class="text-muted">Review queue: <strong class="text-main">' + status.pending_candidates + '</strong></span>';
+            const synced = document.createElement("span");
+            synced.className = "text-muted";
+            synced.textContent = "Synced data: " + ageText;
+            const queue = document.createElement("span");
+            queue.className = "text-muted";
+            queue.appendChild(document.createTextNode("Review queue: "));
+            const count = document.createElement("strong");
+            count.className = "text-main";
+            count.textContent = String(status.pending_candidates ?? "—");
+            queue.appendChild(count);
+            trackRecordsStatus.replaceChildren(synced, queue);
         }
 
         function fetchTrackRecordsStatus(orgId) {
@@ -550,7 +571,7 @@
             {% if running_track_records_task_id %}
             setTrackRecordsButtonBusy(true);
             if (trackRecordsPhase) trackRecordsPhase.textContent = "Updating...";
-            pollTrackRecordsTask(trOrgId, "{{ running_track_records_task_id }}");
+            pollTrackRecordsTask(trOrgId, {{ running_track_records_task_id|tojson }});
             {% endif %}
 
             trackRecordsBtn.addEventListener("click", function () {

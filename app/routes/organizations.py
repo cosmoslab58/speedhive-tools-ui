@@ -17,7 +17,6 @@ from flask import (
 )
 from speedhive.exporters.export_lap_records import get_lap_records
 from speedhive.ndjson import dumps_ndjson_record
-from speedhive.storage import SpeedhiveStorage
 from speedhive.utils.lap_analysis import safe_int
 from speedhive.workflows.refresh_org_cache import (
     refresh_org_cache as refresh_org_cache_bundle,
@@ -67,7 +66,9 @@ def org_add():
 
 
 def org_details(org_id):
-    return redirect(url_for("index", org_id=org_id, **request.args))
+    args = request.args.to_dict()
+    args.pop("org_id", None)  # the path's org_id wins; passing both raised TypeError
+    return redirect(url_for("index", org_id=org_id, **args))
 
 
 def refresh_org(org_id):
@@ -181,8 +182,6 @@ def refresh_org_start(org_id):
 
 
 def clear_org_cache_files(org_id: int):
-    global storage
-    from app import DB_PATH
     from app.tasks import DATA_ROOT
     
     legacy_cache_root = DATA_ROOT / "cache"
@@ -234,15 +233,12 @@ def clear_org_cache_files(org_id: int):
 
     storage.delete_org(org_id)
 
+    # The database file itself stays even when no orgs remain: deleting it
+    # left the -wal/-shm files behind, dropped the app-owned tables
+    # (org_stats, background_tasks) and stranded every module still holding
+    # the old storage object, so the next task failed until a restart.
     remaining_org_ids = _registered_org_ids()
     if not remaining_org_ids:
-        try:
-            DB_PATH.unlink(missing_ok=True)
-        except Exception:
-            pass
-        import app as app_module
-        app_module.storage = SpeedhiveStorage(DB_PATH)
-        storage = app_module.storage
         _wipe_dir_contents(legacy_cache_root)
         _wipe_dir_contents(dumps_root)
         return
@@ -270,6 +266,10 @@ def refresh_stop(task_id):
     task = _get_task(task_id)
     if task is None:
         return jsonify({"error": "Task not found"}), 404
+    # Only a running task can be stopped. Marking a finished one "stopping"
+    # made it look running for ever, blocking every later refresh of the org.
+    if task.get("status") != "running":
+        return jsonify({"task_id": task_id, "stop_requested": False, "status": task.get("status")}), 409
     _update_task(task_id, status="stopping", stop_requested=True)
     return jsonify({"task_id": task_id, "stop_requested": True})
 

@@ -20,7 +20,7 @@ lint:
 
 # Run the local Flask server
 run:
-    ./venv/bin/flask run --host=0.0.0.0 --port=8854
+    SPEEDHIVE_INSECURE_COOKIES=1 ./venv/bin/flask run --host=0.0.0.0 --port=8854
 
 # Deploy from anywhere (ssh to bodhi and run deploy-local there). The manual
 # path when CI can't do it -- an Actions outage, a missed webhook.

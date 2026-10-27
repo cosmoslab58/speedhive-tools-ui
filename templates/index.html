@@ -13,7 +13,7 @@
                         <h3 class="h5 fw-bold mb-3">Find Driver</h3>
                         <form action="/" method="get" class="d-flex gap-2 mb-3">
                             <input type="hidden" name="org_id" value="{{ org.id }}">
-                            <input type="text" name="q" value="{{ driver_query or '' }}" class="form-control form-control-custom py-1 px-2" placeholder="Driver name..." required>
+                            <input type="text" name="q" value="{{ driver_query or '' }}" class="form-control form-control-custom py-1 px-2" placeholder="Driver name..." aria-label="Driver name" required>
                             <button class="btn-custom py-1 px-3" type="submit">Search</button>
                         </form>
 
@@ -26,14 +26,14 @@
                                                 <th>Name</th>
                                                 <th>Session</th>
                                                 <th>Pos</th>
-                                                <th class="text-end"></th>
+                                                <th class="text-end"><span class="visually-hidden">Actions</span></th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {% for row in driver_matches %}
                                                 <tr>
                                                     <td class="fw-semibold small">
-                                                        <a href="/org/{{ org.id }}/stats/driver/{{ row.driver_name }}" class="driver-link">{{ row.driver_name }}</a>
+                                                        <a href="{{ url_for('driver_stats_breakdown', org_id=org.id, driver_name=row.driver_name) }}" class="driver-link">{{ row.driver_name }}</a>
                                                     </td>
                                                     <td class="small text-secondary">
                                                         <a href="/session/{{ row.session_id }}" class="text-secondary text-decoration-none">{{ row.session_name }}</a>
@@ -52,7 +52,7 @@
                                 </div>
                             {% else %}
                                 <div class="text-center py-4 text-muted">
-                                    <i class="fa-solid fa-user-slash fs-2 mb-2 d-block opacity-40"></i>
+                                    <i class="fa-solid fa-user-slash fs-2 mb-2 d-block opacity-50"></i>
                                     No drivers matching "{{ driver_query }}". Try a shorter part of the name.
                                 </div>
                             {% endif %}
@@ -72,7 +72,7 @@
                                 <input type="date" id="end_date" name="end_date" class="form-control form-control-custom py-1 w-auto" value="{{ end_date or '' }}">
                                 <button type="submit" class="btn-custom py-1 px-3">Filter</button>
                                 {% if start_date or end_date %}
-                                    <a href="/?org_id={{ org.id }}{% if driver_query %}&amp;q={{ driver_query }}{% endif %}" class="btn-custom btn-custom-outline py-1 px-3">Clear</a>
+                                    <a href="/?org_id={{ org.id }}{% if driver_query %}&amp;q={{ driver_query|urlencode }}{% endif %}" class="btn-custom btn-custom-outline py-1 px-3">Clear</a>
                                 {% endif %}
                             </form>
                         </div>
@@ -97,8 +97,8 @@
                             </div>
                         {% else %}
                             <div class="text-center py-4 text-muted">
-                                <i class="fa-solid fa-calendar-xmark fs-2 mb-2 d-block opacity-40"></i>
-                                {% if start_date or end_date %}No events in this date range.{% else %}No events yet. Sync this organization's data under Settings &gt; Data.{% endif %}
+                                <i class="fa-solid fa-calendar-xmark fs-2 mb-2 d-block opacity-50"></i>
+                                {% if start_date or end_date %}No events in this date range.{% else %}No events yet. Sync this organization's data under <a href="{{ url_for('org_operations', org_id=org.id) }}" class="text-info">Settings &rsaquo; Data &amp; Backups</a>.{% endif %}
                             </div>
                         {% endif %}
                     </div>
@@ -113,7 +113,11 @@
                                         {% for champ in championships %}
                                             <tr>
                                                 <td>
-                                                    <a href="/championship/{{ champ.id }}" class="fw-semibold text-info text-decoration-none">{{ champ.name }}</a>
+                                                    {% if champ.id %}
+                                                        <a href="https://speedhive.mylaps.com/championships/{{ champ.id|urlencode }}" target="_blank" rel="noopener" class="fw-semibold text-info text-decoration-none">{{ champ.name }} <i class="fa-solid fa-arrow-up-right-from-square small" aria-hidden="true"></i><span class="visually-hidden">(opens Speedhive in a new tab)</span></a>
+                                                    {% else %}
+                                                        <span class="fw-semibold">{{ champ.name }}</span>
+                                                    {% endif %}
                                                     {% if champ.year %}
                                                         <span class="text-secondary small ms-2">({{ champ.year }})</span>
                                                     {% endif %}
@@ -125,7 +129,7 @@
                             </div>
                         {% else %}
                             <div class="text-center py-4 text-muted">
-                                <i class="fa-solid fa-trophy fs-2 mb-2 d-block opacity-40"></i>
+                                <i class="fa-solid fa-trophy fs-2 mb-2 d-block opacity-50"></i>
                                 No championships found for this organization.
                             </div>
                         {% endif %}
@@ -137,7 +141,7 @@
             <div class="text-center" style="max-width: 400px; width: 100%;">
                 <h1 class="h3 fw-bold mb-4">Speedhive-tools Center</h1>
                 <form action="/org-search" method="get" class="d-flex flex-column gap-3">
-                    <input type="number" id="manual-org-id" name="org_id" class="form-control form-control-custom text-center py-3 fs-5" placeholder="Organization ID" required>
+                    <input type="number" id="manual-org-id" name="org_id" class="form-control form-control-custom text-center py-3 fs-5" placeholder="Organization ID" aria-label="Organization ID" required>
                     <div class="text-muted small">Find the ID in an organization's Speedhive URL: speedhive.mylaps.com/organizations/<strong>12345</strong></div>
                     <button class="btn-custom py-3" type="submit">Open organization</button>
                 </form>

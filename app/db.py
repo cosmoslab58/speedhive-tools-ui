@@ -1,3 +1,4 @@
+import re
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
@@ -560,9 +561,15 @@ def _resolve_dump_dir_for_org(org_id: int, dump_key: str | None) -> Path | None:
     if dump_key in (None, "", "latest"):
         return dump_root
 
-    dump_dir = _dump_history_root_for_org(org_id) / dump_key
+    # Backup keys are timestamps. Anything else (".." in particular, which
+    # resolves to the dump root and still passed the check below) is refused
+    # before it can reach a delete.
+    if not re.fullmatch(r"[0-9A-Za-z_-]+", str(dump_key)):
+        return None
+    history_root = _dump_history_root_for_org(org_id)
+    dump_dir = history_root / dump_key
     try:
-        dump_dir.resolve().relative_to(dump_root.resolve())
+        dump_dir.resolve().relative_to(history_root.resolve())
     except Exception:
         return None
     return dump_dir

@@ -1,4 +1,18 @@
+import hmac
+from urllib.parse import urlsplit
+
 from flask import redirect, render_template, request, session, url_for
+
+
+def _safe_next(next_path):
+    """A same-site relative path, or None. Browsers strip tabs and newlines
+    and read a backslash as a slash, so "/<tab>/evil.com" would land off-site."""
+    if not next_path or not next_path.startswith("/") or any(c in next_path for c in "\\\t\r\n"):
+        return None
+    parts = urlsplit(next_path)
+    if parts.scheme or parts.netloc or next_path.startswith("//"):
+        return None
+    return next_path
 
 
 def login():
@@ -7,13 +21,11 @@ def login():
     if request.method == "POST":
         if not UI_PASSWORD:
             error = "Site password is not configured (set SPEEDHIVE_UI_PASSWORD)."
-        elif request.form.get("password", "") == UI_PASSWORD:
+        elif hmac.compare_digest(request.form.get("password", "").encode(), UI_PASSWORD.encode()):
+            # A fresh session on login, so a cookie planted before it can't ride along.
+            session.clear()
             session["authenticated"] = True
-            next_path = request.form.get("next") or ""
-            # only allow same-site relative redirects
-            if next_path.startswith("/") and not next_path.startswith("//"):
-                return redirect(next_path)
-            return redirect(url_for("index"))
+            return redirect(_safe_next(request.form.get("next")) or url_for("index"))
         else:
             error = "Incorrect password."
     if session.get("authenticated"):
