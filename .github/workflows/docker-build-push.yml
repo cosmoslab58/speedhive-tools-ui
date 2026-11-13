@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+  # Manual and nightly rebuilds (patch-watch rebuild-stale dispatches this when the base image moves)
+  workflow_dispatch:
 
 jobs:
   build-and-push:
