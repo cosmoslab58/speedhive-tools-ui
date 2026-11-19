@@ -71,6 +71,10 @@ Environment variables (loaded from `.env` at the repo root):
 | `SPEEDHIVE_INCREMENTAL_BACKFILL_EVENTS` | Recent events re-checked on incremental sync | `3` |
 | `SYNC_SECRET` | Optional shared secret for the notify endpoint | unset (open) |
 | `TRACK_RECORDS_STALE_HOURS` | Cache age before the CI endpoint re-syncs | `20` |
+| `SPEEDHIVE_TRUSTED_PROXIES` | Reverse proxy addresses (space or comma separated) whose `X-Forwarded-For` the login throttle believes | unset (throttle by socket address) |
+| `SPEEDHIVE_MAX_UPLOAD_MB` | Largest upload accepted; a backup ZIP may unpack to 8x this | `64` |
+
+Wrong passwords are throttled per client address: five are free, then each further miss locks that address out for 30 seconds, doubling up to 15 minutes. A correct password clears it; a restart forgets it.
 
 Per-organization settings (parser engine, Anthropic API key / Claude model, minimum laps, email notification config) are edited in **Settings > General** and stored in `data/orgs/<org_id>/settings.json`. They resolve through `speedhive.settings` in the submodule — the same mechanism the CLI uses — with per-org overrides winning over global environment defaults (per-org env vars use a `NAME_<org_id>` suffix pattern). Email/notification settings are UI-only; the library never sends email.
 

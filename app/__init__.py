@@ -43,6 +43,25 @@ PUBLIC_ENDPOINTS = {
 
 CSRF_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
+MAX_UPLOAD_BYTES = int(os.environ.get("SPEEDHIVE_MAX_UPLOAD_MB") or 64) * 1024 * 1024
+# A backup ZIP may expand to at most this much on disk while it is restored.
+MAX_UNZIPPED_BYTES = 8 * MAX_UPLOAD_BYTES
+
+
+def upload_too_large(_error):
+    """413 from MAX_CONTENT_LENGTH: send form uploads back to their page with
+    a readable message instead of a bare error."""
+    limit_mb = MAX_UPLOAD_BYTES // (1024 * 1024)
+    message = f"That file is too large (the limit is {limit_mb} MB)."
+    org_id = (request.view_args or {}).get("org_id")
+    targets = {
+        "upload_local_dump": "org_operations",
+        "org_track_records_import": "org_track_records_curated",
+    }
+    if org_id and request.endpoint in targets and str(org_id).isdigit():
+        return redirect(url_for(targets[request.endpoint], org_id=int(org_id), error=message))
+    return message, 413
+
 
 def csrf_token():
     """The per-session token every login-gated form and fetch POST must echo."""
@@ -85,7 +104,12 @@ def create_app() -> Flask:
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=os.environ.get("SPEEDHIVE_INSECURE_COOKIES") != "1",
+        # Largest request body accepted. The only uploads are backup ZIPs
+        # (a few MB today) and curated-record NDJSON, so this leaves plenty of
+        # headroom while stopping a client from filling the disk.
+        MAX_CONTENT_LENGTH=MAX_UPLOAD_BYTES,
     )
+    app.register_error_handler(413, upload_too_large)
     app.jinja_env.globals["csrf_token"] = csrf_token
     
     UI_PASSWORD = os.environ.get("SPEEDHIVE_UI_PASSWORD")

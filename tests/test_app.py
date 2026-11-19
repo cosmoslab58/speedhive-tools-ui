@@ -870,3 +870,102 @@ def test_stopping_a_finished_task_is_refused(client):
     _update_task(task_id, status="done")
     resp = client.post(f"/refresh/stop/{task_id}")
     assert resp.status_code == 409
+
+
+def test_login_throttle_locks_out_after_repeated_failures(anon_client):
+    """Five free misses, then a 429 with Retry-After, even for the right password."""
+    from app import UI_PASSWORD, throttle
+    throttle.reset()
+    env = {"REMOTE_ADDR": "203.0.113.7"}
+    for _ in range(throttle.FREE_FAILURES):
+        resp = anon_client.post("/login", data={"password": "nope"}, environ_base=env)
+        assert resp.status_code == 200
+    resp = anon_client.post("/login", data={"password": "nope"}, environ_base=env)
+    assert resp.status_code == 200  # this miss starts the lockout
+    resp = anon_client.post("/login", data={"password": UI_PASSWORD}, environ_base=env)
+    assert resp.status_code == 429
+    assert int(resp.headers["Retry-After"]) > 0
+    # Another address is unaffected.
+    resp = anon_client.post("/login", data={"password": UI_PASSWORD}, environ_base={"REMOTE_ADDR": "203.0.113.8"})
+    assert resp.status_code == 302
+    throttle.reset()
+
+
+def test_login_throttle_backoff_doubles_and_success_clears():
+    from app import throttle
+    throttle.reset()
+    addr = "198.51.100.1"
+    now = 1_000_000.0
+    for _ in range(throttle.FREE_FAILURES):
+        throttle.record_failure(addr, now=now)
+    assert throttle.retry_after(addr, now=now) == 0
+    throttle.record_failure(addr, now=now)
+    assert throttle.retry_after(addr, now=now) == throttle.BASE_LOCKOUT_SECONDS
+    throttle.record_failure(addr, now=now)
+    assert throttle.retry_after(addr, now=now) == 2 * throttle.BASE_LOCKOUT_SECONDS
+    for _ in range(20):
+        throttle.record_failure(addr, now=now)
+    assert throttle.retry_after(addr, now=now) == throttle.MAX_LOCKOUT_SECONDS
+    throttle.record_success(addr)
+    assert throttle.retry_after(addr, now=now) == 0
+    throttle.reset()
+
+
+def test_login_throttle_uses_forwarded_address_only_from_trusted_proxy(anon_client, monkeypatch):
+    """Behind Caddy every request comes from one address, so the throttle must
+    key on the forwarded client; a direct caller must not be able to forge it."""
+    from app import throttle
+    throttle.reset()
+    monkeypatch.setenv("SPEEDHIVE_TRUSTED_PROXIES", "192.0.2.10")
+    proxy = {"REMOTE_ADDR": "192.0.2.10"}
+    for _ in range(throttle.FREE_FAILURES + 1):
+        anon_client.post("/login", data={"password": "nope"}, environ_base=proxy,
+                         headers={"X-Forwarded-For": "spoofed, 203.0.113.50"})
+    assert throttle.retry_after("203.0.113.50") > 0
+    assert throttle.retry_after("192.0.2.10") == 0
+    # A different client through the same proxy can still sign in.
+    from app import UI_PASSWORD
+    resp = anon_client.post("/login", data={"password": UI_PASSWORD}, environ_base=proxy,
+                            headers={"X-Forwarded-For": "203.0.113.51"})
+    assert resp.status_code == 302
+    # An untrusted peer's header is ignored.
+    throttle.reset()
+    for _ in range(throttle.FREE_FAILURES + 1):
+        anon_client.post("/login", data={"password": "nope"}, environ_base={"REMOTE_ADDR": "198.51.100.9"},
+                         headers={"X-Forwarded-For": "203.0.113.60"})
+    assert throttle.retry_after("198.51.100.9") > 0
+    assert throttle.retry_after("203.0.113.60") == 0
+    throttle.reset()
+
+
+def test_upload_over_size_cap_is_refused(client):
+    import io
+
+    from app import MAX_UPLOAD_BYTES
+    big = io.BytesIO(b"\0" * (MAX_UPLOAD_BYTES + 1))
+    resp = client.post(
+        "/org/777/dumps/import",
+        data={"file": (big, "huge.zip")},
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 302
+    assert "too+large" in resp.headers["Location"] or "too%20large" in resp.headers["Location"]
+
+
+def test_upload_zip_that_expands_past_cap_is_refused(client, monkeypatch):
+    import io
+    import zipfile
+
+    import app as app_module
+    monkeypatch.setattr(app_module, "MAX_UNZIPPED_BYTES", 1024)
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("777/events.ndjson", "x" * 4096)
+    buf.seek(0)
+    resp = client.post(
+        "/org/777/dumps/import",
+        data={"file": (buf, "bomb.zip")},
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 302
+    assert "over+the+limit" in resp.headers["Location"]

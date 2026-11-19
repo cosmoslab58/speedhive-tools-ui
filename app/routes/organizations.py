@@ -378,8 +378,13 @@ def upload_local_dump(org_id):
         zip_path = staging_dir / "uploaded.zip"
         file.save(zip_path)
 
-        # Unzip
+        # Unzip, refusing archives that would expand past the cap (a small
+        # ZIP can hold gigabytes of zeros).
+        from app import MAX_UNZIPPED_BYTES
         with zipfile.ZipFile(zip_path, "r") as zf:
+            if sum(info.file_size for info in zf.infolist()) > MAX_UNZIPPED_BYTES:
+                limit_mb = MAX_UNZIPPED_BYTES // (1024 * 1024)
+                return redirect(url_for("org_operations", org_id=org_id_int, error=f"This backup unpacks to more than {limit_mb} MB, which is over the limit."))
             zf.extractall(staging_dir)
 
         # Find where events.ndjson or events.ndjson.gz is

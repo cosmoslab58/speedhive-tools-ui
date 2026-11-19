@@ -25,6 +25,9 @@ services:
       # shared Anthropic key for AI-assisted record parsing; an org's own key
       # in its settings.json still wins. Optional, value lives in .env
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      # Caddy on edge, the public front door. The login throttle trusts its
+      # X-Forwarded-For; any other caller is throttled by its own address.
+      - SPEEDHIVE_TRUSTED_PROXIES=192.168.4.120
     ports:
       - "8854:8854"
     volumes:
